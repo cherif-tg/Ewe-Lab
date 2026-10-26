@@ -1,0 +1,9 @@
+# En-têtes servis par Cloudflare Pages.
+# Ce fichier est consommé par la plateforme, il n'est pas publié tel quel.
+
+/fonts/*
+  Cache-Control: public, max-age=604800
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin

@@ -225,7 +225,13 @@ def creer_app(
 ) -> FastAPI:
     base = Path(db_path or os.environ.get("DICTIONNAIRE_DB", DB_DEFAUT))
     contributions = Path(contributions_path or os.environ.get("CONTRIBUTIONS_DB", CONTRIBUTIONS_DEFAUT))
-    autorisees = origines if origines is not None else os.environ.get("CORS_ORIGINS", ORIGINES_DEFAUT).split(",")
+    autorisees = [
+        o.strip()
+        for o in (origines if origines is not None else os.environ.get("CORS_ORIGINS", ORIGINES_DEFAUT).split(","))
+        if o.strip()
+    ]
+    # Visible dans les journaux du serveur : la cause n°1 d'un front muet est une liste vide.
+    print(f"CORS : origines autorisées = {autorisees or 'aucune (vérifier CORS_ORIGINS)'}")
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -252,7 +258,7 @@ def creer_app(
     )
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[o.strip() for o in autorisees if o.strip()],
+        allow_origins=autorisees,
         allow_methods=["GET", "POST"],
         allow_headers=["*"],
     )
