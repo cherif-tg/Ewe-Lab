@@ -1,0 +1,3 @@
+# Lot 2 — moteur de recherche.
+# Sans rapidfuzz, pipeline/recherche.py bascule sur difflib (plus lent et moins précis).
+rapidfuzz>=3.14,<4

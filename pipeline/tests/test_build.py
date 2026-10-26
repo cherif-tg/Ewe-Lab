@@ -12,9 +12,9 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "pipeline"))
+sys.path.insert(0, str(ROOT))
 
-import build_dictionary as bd  # noqa: E402
+from pipeline import build_dictionary as bd  # noqa: E402
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "mini.tsv"
 

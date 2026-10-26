@@ -6,6 +6,8 @@ data/*.tsv
 audit_out/
 dictionnaire.db
 contributions.db
+dictionnaire.db-*
+contributions.db-*
 
 # Environnement Python
 .venv/

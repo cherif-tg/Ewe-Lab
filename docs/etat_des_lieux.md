@@ -109,7 +109,7 @@ L'ordre suit la priorité écrite dans l'étude — qualité des données d'abor
 |---|---|---|
 | **0. Cadrage** | audit corrigé, présent document | fait le 26 octobre 2026 |
 | **1. Données** | `pipeline/build_dictionary.py` (lecture `QUOTE_NONE`, hiérarchie, `corrections.csv`, `orthographe.csv` en statut `a_valider`), `dictionnaire.db`, tests de parsing et d'intégrité | **livré** : 6 937 entrées / 15 267 traductions, 19 tests verts, contrôles d'intégrité bloquants (détail §6) |
-| **2. Recherche** | cascade exacte → préfixe → FTS5 → approximative, golden set de l'étude §5.4 | les 5 requêtes du golden set passent ; réponse < 300 ms |
+| **2. Recherche** | `pipeline/recherche.py` : cinq niveaux classés, fiche d'un mot, mot du jour, CLI d'inspection | **livré** : les 5 requêtes du golden set passent, médiane 1,9 ms pour un objectif de 300 ms (détail §7) |
 | **3. API** | `/v1/search`, `/entry`, `/word-of-the-day`, `/stats`, `/report` (annexe B durcie), `requirements.txt`, tests `pytest` | tests verts, base ouverte en lecture seule |
 | **4. Web** | `tokens.css` (charte §9), 4 écrans (accueil, résultats, fiche, à propos), barre de caractères, Andika auto-hébergée | aucune lettre éwé en carré sur 3 appareils, contrastes AA |
 | **5. Qualité et lancement** | échantillon de 200 sens, taux d'erreur, page de transparence, `README`, `LICENCE` | chiffres publiés, attribution en place |
@@ -149,13 +149,44 @@ Rien n'est commité : les changements sont dans l'arbre de travail, à relire av
 
 ---
 
-## 7. Suite immédiate
+## 7. Lot 2 — moteur de recherche livré le 26 octobre 2026
 
-Lot 2 (recherche) puis lot 3 (API) : cascade exacte → préfixe → FTS5 → approximative, golden set de l'étude §5.4, puis `/v1/search`, `/entry`, `/word-of-the-day`, `/stats`, `/report`.
-Point de vigilance : `rapidfuzz` n'est pas installé — l'étape approximative exigera un `requirements.txt`.
+`pipeline/recherche.py` : connexion en lecture seule (`mode=ro`), cinq niveaux classés, fiche d'un mot dans la forme de l'étude §6.2, mot du jour déterministe, et une CLI d'inspection.
 
-## 8. Prochaine action proposée
+| Niveau | Requête type | Mécanisme |
+|---|---|---|
+| 1. entrée exacte | `abaisser` | index `mot_fr_cle` |
+| 2. expression exacte | `abaisser les prix` | FTS5, phrase entière (≥ 2 mots) |
+| 3. préfixe | `abais` | `LIKE 'abais%'`, tri par longueur |
+| 4. plein texte | `prix abaisser` | FTS5, chaque jeton en préfixe (≥ 2 mots) |
+| 5. approchant | `abaissment` | similarité ≥ 80 et écart de longueur ≤ 34 % |
 
-Écrire le moteur de recherche (`pipeline/recherche.py` ou `api/recherche.py`) sous forme de fonction pure, testable sans HTTP, puis l'exposer dans le lot 3. Le golden set de l'étude §5.4 sert de test d'acceptation.
+**Golden set de l'étude §5.4 : les cinq requêtes passent.** `abaisser` sort en tête avec ses expressions, `Abaisser les prix` ramène la collocation `de nu dzi / de asi le nu dzi`, `s'abaisser` est trouvé par les deux saisies, `abaissment` propose `abaissement`, `abandon` donne `gbegblêdi, yametsitsi, beble`.
 
-La base, elle, est reconstruite à chaque exécution : elle suivra automatiquement le passage des règles en `valide`, sans retraitement manuel.
+**Performance :** médiane 1,9 ms, maximum 2,5 ms sur le golden set — l'objectif de l'étude est de 300 ms.
+
+**Trois écarts assumés, chacun couvert par un test :**
+
+1. **Cinq niveaux au lieu de quatre.** L'étude décrit quatre étapes (§5.1) mais range l'expression exacte à part dans son classement (§5.3) ; les deux lectures sont réconciliées, un mot exact sortant avant une expression.
+2. **Les niveaux 2 et 4 exigent au moins deux mots.** Avec un seul mot, « l'expression contient ce mot » désigne une autre entrée : `maison` ramenait `démolir`, `abattre`, `accompagner`.
+3. **Le niveau 5 n'utilise pas `WRatio`.** Ce score, proposé par l'étude, donnait plus de 80 à `an`, `ban` et `don` pour la requête `abandonner`. `fuzz.ratio` avec un écart de longueur borné ne garde que les vraies variantes.
+
+**Deux notes d'implémentation :**
+
+- SQLite refuse un alias à gauche de `MATCH` (`WHERE f MATCH ?` → « no such column: f »). L'annexe B de l'étude est correcte, elle nomme la table ; le piège est signalé dans le code.
+- Le Python du poste tourne en mode isolé (`-I -P`) : le dossier courant n'est jamais dans `sys.path`. `recherche.py` amorce donc le chemin du dépôt, et les tests l'ajoutent eux-mêmes. `rapidfuzz` 3.14.6 est installé et déclaré dans `requirements.txt` ; sans lui, le moteur bascule sur `difflib`.
+
+**45 tests verts :**
+
+```bash
+python -m unittest discover -s pipeline/tests -v   # 45 tests
+python pipeline/recherche.py maison                # inspection manuelle
+```
+
+---
+
+## 8. Suite immédiate
+
+Lot 3 (API) : `api/main.py` avec `/v1/search`, `/v1/entry/{id}`, `/v1/word-of-the-day`, `/v1/stats`, `/v1/report`, `requirements.txt` complété (fastapi, uvicorn, pydantic) et tests HTTP. La couche métier est déjà là : `Moteur.recherche`, `Moteur.fiche`, `Moteur.mot_du_jour` ; il ne reste qu'à exposer, valider les entrées et brancher les signalements.
+
+Une correction de données à prévoir au lot qualité : quelques traductions contiennent des restes de bas de page OCR (`donner` → « na. Vocabulaire don — dos donner qc »). Ils polluent l'affichage des résultats et mériteraient une règle de troncature explicite.
