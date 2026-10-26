@@ -1,0 +1,4 @@
+-r requirements.txt
+
+# Tests — depuis Starlette 1.x, fastapi.testclient s'appuie sur httpx2
+httpx2>=2.16,<3

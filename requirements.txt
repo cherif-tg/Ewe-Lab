@@ -1,3 +1,7 @@
-# Lot 2 — moteur de recherche.
-# Sans rapidfuzz, pipeline/recherche.py bascule sur difflib (plus lent et moins précis).
+# Lot 2 — moteur de recherche (repli difflib si absent)
 rapidfuzz>=3.14,<4
+
+# Lot 3 — API HTTP
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+pydantic>=2.7,<3

@@ -1,0 +1,90 @@
+/* Jetons de la charte graphique — Dictionnaire français–éwé, v1.0.
+   Toute couleur ou taille utilisée dans l'interface doit venir d'ici :
+   aucune valeur en dur ailleurs. */
+
+:root {
+  /* Neutres */
+  --fond: #FBF8F2;
+  --surface: #FFFFFF;
+  --fond-alt: #F4ECDD;
+  --texte: #2A2118;
+  --texte-sec: #5B4F42;
+  --texte-discret: #7A6C5C;   /* uniquement sur --fond et --surface */
+  --bordure: #E3D9C6;         /* séparateurs décoratifs */
+  --bordure-champ: #8C7F6E;   /* champs, boutons, touches (>= 3:1) */
+
+  /* Accent principal */
+  --primaire: #3F6B4A;
+  --primaire-hover: #335A3E;
+  --primaire-fond: #E4EEE5;
+  --sur-primaire: #FFFFFF;
+
+  /* Accents ponctuels */
+  --accent: #C0552D;          /* éléments graphiques uniquement */
+  --accent-texte: #A3441F;
+  --accent-fond: #F8E4DA;
+  --ocre: #D9A441;            /* jamais en texte */
+  --ocre-fond: #F6E7C4;
+
+  /* États */
+  --succes: #2E6B3B;
+  --erreur: #B3261E;
+  --erreur-fond: #FBE6E3;
+  --info: #2F5D7C;
+
+  /* Typographie */
+  --police: "Andika", "Charis SIL", "Noto Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --t-base: 1.125rem;
+  --t-ewe: 1.3rem;
+  --t-petit: 0.9375rem;
+
+  /* Forme */
+  --rayon: 8px;
+  --rayon-carte: 12px;
+  --zone-tactile: 44px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fond: #1C1712;
+    --surface: #262019;
+    --fond-alt: #262019;
+    --texte: #F1E9DA;
+    --texte-sec: #C9BCA6;
+    --texte-discret: #A19482;
+    --bordure: #3A3228;
+    --bordure-champ: #8C7F6E;
+    --primaire: #8FC09B;
+    --primaire-hover: #A6CFB0;
+    --primaire-fond: #2C3F32;
+    --sur-primaire: #1C1712;
+    --accent: #E58A62;
+    --accent-texte: #E58A62;
+    --accent-fond: #3A2219;
+    --ocre: #E6B65C;
+    --ocre-fond: #3A2F17;
+    --succes: #8FC09B;
+    --erreur: #F2A39C;
+    --erreur-fond: #3B1F1C;
+    --info: #8DB8D6;
+  }
+}
+
+html { font-size: 100%; }
+
+body {
+  margin: 0;
+  background: var(--fond);
+  color: var(--texte);
+  font-family: var(--police);
+  font-size: var(--t-base);
+  line-height: 1.6;
+}
+
+[lang="ee"] { color: var(--primaire); font-weight: 700; font-size: var(--t-ewe); }
+
+:focus-visible { outline: 2px solid var(--primaire); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

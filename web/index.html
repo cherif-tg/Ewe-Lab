@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dictionnaire français–éwé</title>
+  <meta name="description" content="Cherche un mot français, obtiens l'éwé, avec ses sens et ses expressions.">
+  <meta name="theme-color" content="#FBF8F2">
+  <!-- Adresse de l'API. Vide = même origine (utile derrière un proxy). -->
+  <meta name="api-base" content="http://127.0.0.1:8000">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="fonts/andika-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles/polices.css">
+  <link rel="stylesheet" href="styles/tokens.css">
+  <link rel="stylesheet" href="styles/app.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <a class="saut" href="#contenu">Aller au contenu</a>
+
+  <header class="entete">
+    <a class="marque" href="#/">Dictionnaire français–éwé</a>
+    <nav class="nav-haut" aria-label="Navigation principale">
+      <a href="#/" data-nav="dictionnaire">Dictionnaire</a>
+      <a href="#/apprendre" data-nav="apprendre">Apprendre</a>
+      <a href="#/a-propos" data-nav="a-propos">À propos</a>
+    </nav>
+  </header>
+
+  <main id="contenu">
+    <form class="recherche" role="search" id="form-recherche" autocomplete="off">
+      <svg class="loupe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+           stroke-linecap="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"></circle>
+        <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+      </svg>
+      <label class="sr-only" for="champ">Chercher un mot français</label>
+      <input id="champ" name="q" type="search" placeholder="Chercher un mot français…"
+             enterkeyhint="search" spellcheck="false" autocapitalize="none" autocorrect="off">
+      <button class="effacer" type="button" id="effacer" aria-label="Effacer la recherche" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+             stroke-linecap="round" aria-hidden="true" width="20" height="20">
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+        </svg>
+      </button>
+    </form>
+
+    <div class="barre-caracteres" role="group" aria-label="Caractères éwés">
+      <button class="touche" type="button" data-caractere="ɖ" aria-label="lettre ɖ">ɖ</button>
+      <button class="touche" type="button" data-caractere="ɛ" aria-label="lettre ɛ">ɛ</button>
+      <button class="touche" type="button" data-caractere="ƒ" aria-label="lettre ƒ">ƒ</button>
+      <button class="touche" type="button" data-caractere="ɣ" aria-label="lettre ɣ">ɣ</button>
+      <button class="touche" type="button" data-caractere="ŋ" aria-label="lettre ŋ">ŋ</button>
+      <button class="touche" type="button" data-caractere="ɔ" aria-label="lettre ɔ">ɔ</button>
+      <button class="touche" type="button" data-caractere="ʋ" aria-label="lettre ʋ">ʋ</button>
+      <button class="touche maj" type="button" id="maj" aria-pressed="false"
+              aria-label="Majuscules" title="Insérer en majuscule (ou appui long sur une touche)">Maj</button>
+    </div>
+
+    <div id="vue"></div>
+  </main>
+
+  <nav class="onglets" aria-label="Navigation mobile">
+    <a href="#/" data-nav="dictionnaire">Dictionnaire</a>
+    <a href="#/apprendre" data-nav="apprendre">Apprendre</a>
+    <a href="#/a-propos" data-nav="a-propos">À propos</a>
+  </nav>
+
+  <footer class="pied">
+    <p>Données issues d'un lexique français–éwé numérisé, en cours de correction.
+       <a href="#/a-propos">Sources, chiffres et transparence</a>.</p>
+  </footer>
+
+  <dialog id="dialogue-signalement" aria-labelledby="titre-signalement">
+    <form id="form-signalement">
+      <h2 id="titre-signalement">Signaler un problème</h2>
+      <p class="contexte" id="contexte-signalement"></p>
+
+      <fieldset>
+        <legend>Type de retour</legend>
+        <label><input type="radio" name="type" value="erreur" checked> Erreur de traduction</label>
+        <label><input type="radio" name="type" value="proposition"> Proposer une autre traduction</label>
+        <label><input type="radio" name="type" value="usage"> Ce mot est-il encore utilisé ?</label>
+      </fieldset>
+
+      <label for="texte-signalement">Votre message</label>
+      <textarea id="texte-signalement" name="texte" required minlength="2" maxlength="500"></textarea>
+
+      <label for="contact-signalement">Contact (facultatif)</label>
+      <input id="contact-signalement" name="contact" type="text" maxlength="100">
+
+      <p class="contexte">Votre message sert à corriger le dictionnaire ; il pourra être publié
+        sous forme anonyme. Le contact est facultatif.</p>
+
+      <div class="actions">
+        <button class="bouton" type="button" id="annuler-signalement">Annuler</button>
+        <button class="bouton plein" type="submit">Envoyer</button>
+      </div>
+      <p class="message" id="message-signalement" role="status"></p>
+    </form>
+  </dialog>
+
+  <div id="annonce" class="sr-only" aria-live="polite"></div>
+</body>
+</html>

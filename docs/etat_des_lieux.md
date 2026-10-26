@@ -14,10 +14,13 @@
 | `docs/Charte graphique et couleurs …` | complet, v1.0 | palette mesurée WCAG, Andika, variables CSS prêtes |
 | `data/riebstein-lexique-v2.tsv` | présent, **non versionné** (`.gitignore`) | 8 574 lignes de données, séparateur `;` |
 | `audit.py` | présent à la racine | script du jour 1 ; l'étude le prévoit dans `pipeline/` |
-| `api/`, `pipeline/`, `web/` | **vides** | dossiers créés, aucun fichier |
+| `pipeline/` | `build_dictionary.py`, `recherche.py`, 45 tests | import et moteur (lots 1-2) |
+| `api/` | `main.py`, 21 tests | service HTTP (lot 3) |
+| `web/` | **vide** | lot 4 |
 | `README.md` | **vide** | doit porter les chiffres d'audit, le schéma, la licence (étude §10) |
 | `LICENCE.md` | **vide** | dépend de la vérification des droits (étude §9) |
-| Git | 1 commit `Definition de l'architecture du projet`, branche `main` | arbre propre avant cette session |
+| Git | 3 commits, branche `main` | architecture, pipeline, moteur |
+| `.venv`, `requirements*.txt` | environnement `uv` (Python 3.14) | runtime et tests séparés |
 
 Outillage local : Python 3.13.15, Node 24.20.0. `fastapi`, `uvicorn`, `rapidfuzz`, `pydantic`, `pytest`, `httpx` **ne sont pas installés** — il faudra un `requirements.txt` et un environnement virtuel avant le lot API.
 
@@ -110,8 +113,8 @@ L'ordre suit la priorité écrite dans l'étude — qualité des données d'abor
 | **0. Cadrage** | audit corrigé, présent document | fait le 26 octobre 2026 |
 | **1. Données** | `pipeline/build_dictionary.py` (lecture `QUOTE_NONE`, hiérarchie, `corrections.csv`, `orthographe.csv` en statut `a_valider`), `dictionnaire.db`, tests de parsing et d'intégrité | **livré** : 6 937 entrées / 15 267 traductions, 19 tests verts, contrôles d'intégrité bloquants (détail §6) |
 | **2. Recherche** | `pipeline/recherche.py` : cinq niveaux classés, fiche d'un mot, mot du jour, CLI d'inspection | **livré** : les 5 requêtes du golden set passent, médiane 1,9 ms pour un objectif de 300 ms (détail §7) |
-| **3. API** | `/v1/search`, `/entry`, `/word-of-the-day`, `/stats`, `/report` (annexe B durcie), `requirements.txt`, tests `pytest` | tests verts, base ouverte en lecture seule |
-| **4. Web** | `tokens.css` (charte §9), 4 écrans (accueil, résultats, fiche, à propos), barre de caractères, Andika auto-hébergée | aucune lettre éwé en carré sur 3 appareils, contrastes AA |
+| **3. API** | `api/main.py` : six routes `/v1`, CORS restreint, limiteur sur `/report`, `contributions.db` séparée | **livré** : 21 tests verts + serveur réel vérifié (détail §8) |
+| **4. Web** | `web/` : jetons de la charte, quatre écrans, barre de caractères, Andika auto-hébergée | **livré** : parcours complet vérifié sous jsdom contre l'API réelle ; reste le test visuel sur appareils (détail §9) |
 | **5. Qualité et lancement** | échantillon de 200 sens, taux d'erreur, page de transparence, `README`, `LICENCE` | chiffres publiés, attribution en place |
 | **6. Apprendre l'éwé** | leçons, quiz depuis les entrées `verifie = 1` | après la v1 |
 
@@ -185,8 +188,78 @@ python pipeline/recherche.py maison                # inspection manuelle
 
 ---
 
-## 8. Suite immédiate
+## 8. Lot 3 — API livrée le 26 octobre 2026
 
-Lot 3 (API) : `api/main.py` avec `/v1/search`, `/v1/entry/{id}`, `/v1/word-of-the-day`, `/v1/stats`, `/v1/report`, `requirements.txt` complété (fastapi, uvicorn, pydantic) et tests HTTP. La couche métier est déjà là : `Moteur.recherche`, `Moteur.fiche`, `Moteur.mot_du_jour` ; il ne reste qu'à exposer, valider les entrées et brancher les signalements.
+`api/main.py` : application FastAPI construite par une fabrique (`creer_app`), pour que les tests injectent une base temporaire sans toucher aux variables d'environnement.
 
-Une correction de données à prévoir au lot qualité : quelques traductions contiennent des restes de bas de page OCR (`donner` → « na. Vocabulaire don — dos donner qc »). Ils polluent l'affichage des résultats et mériteraient une règle de troncature explicite.
+| Route | Rôle |
+|---|---|
+| `GET /health` | disponibilité et version |
+| `GET /v1/search?q=&limit=` | cascade ; `results` (niveaux 1 à 4) et `suggestions` (niveau 5) séparés |
+| `GET /v1/entry/{id}?brut=` | fiche ; `brut=true` ajoute la graphie numérisée (étude §7.2) |
+| `GET /v1/word-of-the-day?jour=` | mot du jour, déterministe par date |
+| `GET /v1/stats` | compteurs de `meta` ; `taux_erreur_estime` reste `null` tant que l'échantillon n'est pas fait |
+| `POST /v1/report` | signalement (201), limité à 5 envois par tranche de 10 minutes et par IP |
+
+**Cinq choix à connaître :**
+
+1. `results` ne contient que les niveaux 1 à 4 ; les mots approchants partent dans `suggestions` (3 au plus), selon la lecture de l'étude §7.2. Conséquence assumée : `abaissment` renvoie `count: 0` et `suggestions: ["abaissement", …]` — l'interface affiche « Vouliez-vous dire ? ».
+2. La base du dictionnaire reste ouverte en **lecture seule** ; `contributions.db` est un fichier distinct, créé au démarrage (étude §3.3).
+3. Un contact vide n'est pas stocké (`""` → `NULL`) : pas de donnée personnelle inutile (étude §9).
+4. `/v1/report` refuse une entrée inconnue et un texte vide **avant** d'écrire, en 422.
+5. CORS limité par défaut aux ports locaux 8000 et 5173, surchargeable par `CORS_ORIGINS`.
+
+**Vérifications :** 21 tests API verts, avec une application neuve par test pour que le limiteur reparte de zéro. Serveur réel démarré sur un port de test : `/health`, `/v1/search`, `/v1/stats`, `/v1/word-of-the-day`, `/v1/report` et un 404 vérifiés à la main, journal uvicorn sans avertissement.
+
+Dépendances ajoutées : `fastapi` 0.162, `uvicorn[standard]` 0.54, `pydantic` 2.14, et `httpx2` 2.16 côté tests — Starlette 1.10 déprécie `httpx` pour son client de test.
+
+**Lancement :**
+
+```bash
+python -m uvicorn api.main:app --reload          # http://127.0.0.1:8000/docs
+python -m unittest discover -s api/tests -v      # 21 tests
+```
+
+---
+
+## 9. Lot 4 — interface livrée le 26 octobre 2026
+
+Site statique, sans framework ni étape de build : `web/index.html` charge `styles/polices.css`, `styles/tokens.css`, `styles/app.css` et `js/app.js`.
+
+| Fichier | Rôle |
+|---|---|
+| `web/styles/tokens.css` | jetons de la charte §9, recopiés tels quels (clair + sombre) |
+| `web/styles/app.css` | mise en page et composants ; aucune couleur ni taille en dur |
+| `web/styles/polices.css` | quatre `@font-face` Andika, `unicode-range` calculés sur la **vraie table cmap** de chaque fichier |
+| `web/js/app.js` | routeur par ancre, recherche différée de 200 ms, fiche, signalement |
+| `web/fonts/` | Andika 400 et 700, sous-ensembles latin (18,8 Ko) et latin-ext (79,5 Ko) |
+
+**Écrans :** accueil (recherche, barre de caractères, mot du jour en ocre pâle), résultats avec « Vouliez-vous dire ? », fiche groupée en *Sens principal / Expressions / Précisions de sens*, à propos avec les chiffres de `/v1/stats`. Routes : `#/`, `#/recherche/<q>`, `#/mot/<id>`, `#/apprendre`, `#/a-propos`.
+
+**Conforme à la charte :** barre de recherche de 56 px, touches éwés de 44 × 44 px avec touche Maj et appui long, traductions éwés en vert et plus grandes, étiquette de nature neutre, actions en boutons à contour avec icône **et** texte, aucune ombre, mode sombre par `prefers-color-scheme`, focus visible, `lang="fr"` / `lang="ee"`, titres de vue en `sr-only` et annonces par région `aria-live` dédiée.
+
+**Poids : 40 Ko hors polices** (objectif de l'étude : 200 Ko). Les 79,5 Ko du sous-ensemble étendu ne se téléchargent que si un caractère éwé apparaît, grâce aux plages calculées.
+
+**Vérification :** le navigateur intégré refuse les adresses locales, la page a donc été exécutée sous **jsdom** avec le vrai HTML et la vraie API. Parcours déroulé : mot du jour affiché, recherche « abaisser » → 2 résultats, fiche → h1, trois groupes, expressions complètes (« abaisser les prix »), bascule du texte d'origine (« di gbô ame »), dialogue de signalement ouvert puis envoyé (201), touche `ɔ` insérée, suggestions sur « abaissment », chiffres de la page à propos, liste des 5 leçons. Aucune erreur dans le journal uvicorn.
+
+**Quatre limites assumées :**
+
+1. **Routage par ancre**, pas par chemin : `#/mot/2` au lieu de `/mot/abaisser`. Les liens sont partageables, mais le référencement et les URL lisibles demanderont un rendu par page (lot 5).
+2. **`ẽ` (U+1EBD) est absent des deux sous-ensembles Andika** — mesuré, la charte ne l'avait pas relevé. Le tilde combinant U+0303 est présent, donc `e` + U+0303 s'affiche correctement. Si la règle `ê → ẽ` est validée, il faudra stocker en NFD ou prévoir une police de repli.
+3. **La barre de caractères est peu utile en v1** : la recherche ne va que du français vers l'éwé. Elle reste en place comme le demande la charte et deviendra fonctionnelle avec la recherche inverse (v2).
+4. **Nom du produit et monogramme encore provisoires** : « Dictionnaire français–éwé » et `ɛ` sur ivoire. Les décisions 2 et 3 de la charte restent ouvertes.
+
+**Lancement (deux terminaux) :**
+
+```bash
+python -m uvicorn api.main:app --reload                        # API sur 8000
+python -m http.server 5173 --directory web                     # front sur 5173
+```
+
+Le test visuel sur appareils réels reste à faire : chaîne de contrôle de la charte §3.4 bis (`ɖ ɛ ƒ ɣ ŋ ɔ ʋ Ɖ Ɛ Ƒ Ɣ Ŋ Ɔ Ʋ ɔ́ ɛ̀ ɛ̃ ɔ̄ — gbɔdidi, gbegblɛdi, ɖe, ƒe, ʋu`) sur un Android d'entrée de gamme, un iPhone et un ordinateur.
+
+---
+
+## 10. Suite immédiate
+
+Lot 5 (qualité et publication) : échantillon de 200 sens et taux d'erreur affiché, `README.md` (chiffres, schéma, instructions, attribution), `LICENCE.md` toujours bloquée par la vérification des droits, troncature des restes de bas de page OCR, et rendu par page pour des URL lisibles.

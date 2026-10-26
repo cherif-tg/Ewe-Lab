@@ -233,6 +233,7 @@ class Moteur:
             item = {
                 "type": s["type"],
                 "libelle": s["libelle_fr"],
+                "phrase": s["phrase_fr"],
                 "traductions": [t["ewe"] for t in trads],
                 "verifie": any(t["verifie"] for t in trads),
             }
