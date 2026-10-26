@@ -1,7 +1,15 @@
 # Déploiement — Agbalẽ
 
-Cible : **front sur Cloudflare Pages**, **API sur Render** (offre gratuite), et la base du
-dictionnaire **hors du dépôt de code**, dans un dépôt privé dédié.
+Cible : **front sur Cloudflare Workers** (assets statiques), **API sur Render** (offre gratuite), et
+la base du dictionnaire **hors du dépôt de code**, dans un dépôt privé dédié.
+
+En production :
+
+| Élément | URL |
+|---|---|
+| Front | https://agbale.tengacherif.workers.dev |
+| API | https://agbale-api.onrender.com |
+| Données | dépôt privé `cherif-tg/agble_donnees` |
 
 Pourquoi cette contrainte : `dictionnaire.db` est une œuvre dérivée d'un lexique dont les droits ne
 sont pas vérifiés. Elle ne doit être ni versionnée dans le dépôt public, ni téléchargeable, ni
@@ -9,13 +17,12 @@ servie comme fichier.
 
 | Élément | Où | Coût |
 |---|---|---|
-| Front statique (`web/`) | Cloudflare Pages | gratuit |
+| Front statique (`web/`) | Cloudflare Workers | gratuit |
 | API (`api/main.py`) | Render, plan free | gratuit |
 | Base `dictionnaire.db` | dépôt privé `cherif-tg/agble_donnees` | gratuit |
 | Signalements | `contributions.db` sur Render | **effacés** à chaque redéploiement ou réveil |
 
-L'ordre compte : Pages d'abord (pour connaître l'origine à autoriser), Render ensuite, puis le
-front est branché sur l'API.
+L'ordre a compté : connaître l'origine du front avant de la déclarer côté API.
 
 ---
 
@@ -66,16 +73,18 @@ fichier versionné (`/contents/…` → `application/vnd.github.raw`) ou asset d
 (`/releases/assets/<id>` → `application/octet-stream`). Se tromper renvoie du JSON ; le script le
 détecte et s'arrête au lieu de démarrer sur un fichier corrompu.
 
-## 2. Front sur Cloudflare Pages
+## 2. Front sur Cloudflare Workers (en place)
 
-1. *Workers & Pages* → *Create* → *Pages* → *Connect to Git* → dépôt `cherif-tg/Ewe_Lab`.
-2. Réglages de build : framework **None**, commande de build **vide**, répertoire de sortie **`web`**.
-3. Nom du projet : **`agbale`** — l'URL sera `https://agbale.pages.dev` (modifiable ensuite).
+Le site est servi par un **Worker à assets statiques**, racine `web/` :
+**https://agbale.tengacherif.workers.dev**.
 
-Noter l'URL exacte : elle sert deux fois, dans `CORS_ORIGINS` et dans la vérification.
+Un Worker n'est pas un projet Pages : l'origine à autoriser est
+`https://agbale.tengacherif.workers.dev`, pas `*.pages.dev`. Les deux reposent sur le même CDN et
+le même certificat, mais **les noms de domaine diffèrent** — c'est le piège de ce déploiement, et
+il se paie par une erreur CORS silencieuse côté navigateur.
 
-> À ce stade la page s'affiche mais la recherche échoue : elle pointe encore sur l'API locale.
-> C'est normal, l'étape 4 corrige ça.
+Mise à jour du front : si le Worker est connecté au dépôt, un `git push` le reconstruit ; sinon
+`wrangler deploy` depuis la machine, en incluant `styles/`, `js/` et `fonts/`.
 
 ## 3. API sur Render
 
@@ -92,7 +101,7 @@ Variables d'environnement :
 |---|---|
 | `BASE_URL` | l'URL de l'étape 1 |
 | `GH_TOKEN` | le jeton fin, lecture seule |
-| `CORS_ORIGINS` | `https://agbale.pages.dev` (exactement, sans barre finale) |
+| `CORS_ORIGINS` | `https://agbale.tengacherif.workers.dev` (exactement, sans barre finale) |
 | `DICTIONNAIRE_DB` | `dictionnaire.db` (déjà dans `render.yaml`) |
 
 Vérifications une fois le service en ligne :
@@ -106,30 +115,34 @@ curl https://<service>.onrender.com/v1/stats
 `/v1/stats` doit renvoyer 6 937 entrées et 15 267 traductions : c'est la preuve que la base a bien
 été récupérée au build.
 
-## 4. Brancher le front sur l'API
+## 4. Brancher le front sur l'API (fait)
 
-Remplacer la valeur dans `web/index.html` :
+`web/index.html` porte :
 
 ```html
-<meta name="api-base" content="https://<service>.onrender.com">
+<meta name="api-base" content="https://agbale-api.onrender.com">
 ```
-
-Puis commiter et pousser : Cloudflare Pages redéploie automatiquement.
 
 `web/js/app.js` garde un repli sur `http://127.0.0.1:8000` quand la page est ouverte en local, donc
 cette valeur ne gêne pas le développement.
 
 ## 5. Vérifier le parcours complet
 
-- `https://agbale.pages.dev` : recherche « maison », ouverture d'une fiche, bascule
+Vérification CORS, la plus utile car elle échoue silencieusement dans le navigateur :
+
+```bash
+curl -s -o /dev/null -D - -H "Origin: https://agbale.tengacherif.workers.dev" https://agbale-api.onrender.com/v1/stats
+```
+
+La réponse doit contenir `access-control-allow-origin: https://agbale.tengacherif.workers.dev`.
+
+- `https://agbale.tengacherif.workers.dev` : recherche « maison », ouverture d'une fiche, bascule
   « Texte d'origine ».
 - Onglet « Apprendre » : les cinq leçons s'ouvrent ; l'exercice affiche « Aucun mot relu pour
   l'instant » (état normal tant que `data/verifications.csv` n'est pas rempli).
 - Signalement depuis une fiche : réponse 201 — puis se souvenir qu'il ne survivra pas à un
   redéploiement.
-- Console du navigateur : aucune erreur CORS. Les URL de préversion
-  (`https://<commit>.agbale.pages.dev`) ont une origine différente : les ajouter à `CORS_ORIGINS`
-  pour les tester.
+- Console du navigateur : aucune erreur CORS. Une URL de préversion Worker (`<version>-agbale.<compte>.workers.dev`) a une origine différente : l'ajouter à `CORS_ORIGINS` pour la tester.
 
 ## 6. Ce que l'offre gratuite ne couvre pas
 

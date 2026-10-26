@@ -38,9 +38,12 @@ Pour un déploiement où l'API est servie sur la même origine, laisser aussi vi
 
 ## Déploiement
 
-Front sur **Cloudflare Pages**, API sur **Render** (offre gratuite). La base du dictionnaire n'est
-pas dans le dépôt : elle est téléchargée à la construction depuis un asset de release privé, pour
-ne jamais publier la donnée.
+Front sur **Cloudflare Workers**, API sur **Render** (offre gratuite). La base du dictionnaire n'est
+pas dans le dépôt : elle est téléchargée à la construction depuis un dépôt privé, pour ne jamais
+publier la donnée.
+
+- Front : https://agbale.tengacherif.workers.dev
+- API : https://agbale-api.onrender.com — documentation sur `/docs`
 
 ```bash
 python scripts/base_de_donnees.py     # récupère la base si BASE_URL est défini
