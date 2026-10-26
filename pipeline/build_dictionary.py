@@ -37,6 +37,9 @@ DEFAULT_SRC = ROOT / "data" / "riebstein-lexique-v2.tsv"
 DEFAULT_DB = ROOT / "dictionnaire.db"
 DEFAULT_CORRECTIONS = ROOT / "data" / "corrections.csv"
 DEFAULT_ORTHO = ROOT / "data" / "orthographe.csv"
+DEFAULT_QUALITE = ROOT / "data" / "qualite.csv"
+DEFAULT_THEMES = ROOT / "content" / "themes.csv"
+DEFAULT_VERIFICATIONS = ROOT / "data" / "verifications.csv"
 
 EXPECTED = ["section", "entree", "nature", "sous_entree", "traduction_ewe"]
 
@@ -97,6 +100,17 @@ CREATE INDEX idx_anomalies_type ON anomalies(type);
 CREATE TABLE meta (
   cle    TEXT PRIMARY KEY,
   valeur TEXT NOT NULL
+);
+
+-- Module « Apprendre l'éwé » (étude §16)
+CREATE TABLE themes (
+  id   INTEGER PRIMARY KEY,
+  nom  TEXT NOT NULL UNIQUE
+);
+CREATE TABLE entree_theme (
+  entree_id INTEGER NOT NULL REFERENCES entrees(id),
+  theme_id  INTEGER NOT NULL REFERENCES themes(id),
+  PRIMARY KEY (entree_id, theme_id)
 );
 """
 
@@ -204,6 +218,44 @@ def to_standard(s: str, table: dict[int, str]) -> str:
     return nfc(s).translate(table) if table else nfc(s)
 
 
+def load_taux_erreur(path: Path) -> float | None:
+    """Dernier taux d'erreur mesuré, écrit par pipeline/echantillon.py (étude §8.1)."""
+    if not Path(path).exists():
+        return None
+    with open(path, encoding="utf-8-sig", newline="") as f:
+        lignes = list(csv.DictReader(f, delimiter=";"))
+    if not lignes:
+        return None
+    try:
+        return float(lignes[-1]["taux"])
+    except (KeyError, ValueError):
+        return None
+
+
+def load_themes(path: Path) -> list[tuple[str, str]]:
+    """Couples (thème, mot français) de content/themes.csv."""
+    if not Path(path).exists():
+        return []
+    with open(path, encoding="utf-8-sig", newline="") as f:
+        return [
+            ((r.get("theme") or "").strip(), (r.get("mot_fr") or "").strip())
+            for r in csv.DictReader(f, delimiter=";", quoting=csv.QUOTE_NONE)
+            if (r.get("theme") or "").strip() and (r.get("mot_fr") or "").strip()
+        ]
+
+
+def load_verifications(path: Path) -> dict[str, str]:
+    """Mots relus : {mot français : relevé par qui}. Une ligne sans `relu_par` compte pour zéro."""
+    if not Path(path).exists():
+        return {}
+    with open(path, encoding="utf-8-sig", newline="") as f:
+        return {
+            (r.get("mot_fr") or "").strip(): (r.get("relu_par") or "").strip()
+            for r in csv.DictReader(f, delimiter=";", quoting=csv.QUOTE_NONE)
+            if (r.get("mot_fr") or "").strip() and (r.get("relu_par") or "").strip()
+        }
+
+
 # --------------------------------------------------------------------------
 # Lecture de la source
 # --------------------------------------------------------------------------
@@ -235,10 +287,14 @@ def build(
     db_path: Path = DEFAULT_DB,
     corrections_path: Path = DEFAULT_CORRECTIONS,
     ortho_path: Path = DEFAULT_ORTHO,
+    qualite_path: Path = DEFAULT_QUALITE,
+    themes_path: Path = DEFAULT_THEMES,
+    verifications_path: Path = DEFAULT_VERIFICATIONS,
     log=print,
 ) -> dict:
     corr = load_corrections(corrections_path)
     ortho, actives, attente = load_ortho(ortho_path)
+    taux_erreur = load_taux_erreur(qualite_path)
 
     for suffix in ("", "-wal", "-shm"):
         Path(str(db_path) + suffix).unlink(missing_ok=True)
@@ -343,6 +399,9 @@ def build(
     cur.execute("INSERT INTO fts_fr(fts_fr) VALUES ('optimize')")
     cur.execute("INSERT INTO fts_ewe(fts_ewe) VALUES ('optimize')")
 
+    nb_themes, nb_liens = _charger_themes(cur, themes_path)
+    nb_relues = _charger_verifications(cur, verifications_path)
+
     stats = {
         "source": src.name,
         "lignes_source": nb_sens,
@@ -354,6 +413,10 @@ def build(
         "regles_en_attente": len(attente),
         "regles_hits": dict(regles_hits),
         "natures": dict(natures),
+        "themes": nb_themes,
+        "mots_themes": nb_liens,
+        "traductions_relues": nb_relues,
+        "taux_erreur_estime": "" if taux_erreur is None else taux_erreur,
         "importe_le": dt.datetime.now().isoformat(timespec="seconds"),
     }
     cur.executemany(
@@ -393,6 +456,43 @@ def _json(value) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
 
 
+def _charger_themes(cur, chemin: Path) -> tuple[int, int]:
+    """Insère les thèmes et leurs mots. Retourne (nombre de thèmes, nombre de liens)."""
+    identifiants: dict[str, int] = {}
+    liens = 0
+    for theme, mot in load_themes(chemin):
+        if theme not in identifiants:
+            cur.execute("INSERT OR IGNORE INTO themes(nom) VALUES (?)", (theme,))
+            identifiants[theme] = cur.execute(
+                "SELECT id FROM themes WHERE nom = ?", (theme,)
+            ).fetchone()[0]
+        ligne = cur.execute(
+            "SELECT id FROM entrees WHERE mot_fr_cle = ?", (lemma_key(mot),)
+        ).fetchone()
+        if ligne is None:
+            continue
+        cur.execute(
+            "INSERT OR IGNORE INTO entree_theme(entree_id, theme_id) VALUES (?,?)",
+            (ligne[0], identifiants[theme]),
+        )
+        liens += 1
+    return len(identifiants), liens
+
+
+def _charger_verifications(cur, chemin: Path) -> int:
+    """Marque `verifie = 1` pour les mots relus. Retourne le nombre de traductions marquées."""
+    marquees = 0
+    for mot in load_verifications(chemin):
+        cur.execute(
+            "UPDATE traductions SET verifie = 1 WHERE sens_id IN ("
+            "  SELECT id FROM sens WHERE entree_id IN ("
+            "    SELECT id FROM entrees WHERE mot_fr_cle = ?))",
+            (lemma_key(mot),),
+        )
+        marquees += cur.rowcount
+    return marquees
+
+
 def _report(stats, controles, actives, attente, chars, log) -> None:
     log(f"Source            : {stats['source']}")
     log(f"Lignes lues       : {stats['lignes_source']}")
@@ -406,6 +506,7 @@ def _report(stats, controles, actives, attente, chars, log) -> None:
         for regle, n in sorted(stats["regles_hits"].items(), key=lambda x: -x[1]):
             log(f"  {regle} : {n}")
     log(f"Anomalies         : {stats['anomalies'] or 'aucune'}")
+    log(f"Taux d'erreur     : {stats['taux_erreur_estime'] or 'non mesuré (voir pipeline/echantillon.py)'}")
     log(f"Contrôles         : {controles}")
     non_ascii = {c: n for c, n in chars.items() if ord(c) > 127}
     log("Caractères non ASCII restants dans la colonne éwé :")

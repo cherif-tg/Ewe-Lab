@@ -15,6 +15,7 @@ let majuscules = false;
 let jeton = 0;            // invalide les réponses arrivées trop tard
 let controleur = null;    // annule la requête précédente
 let cacheJour = null;
+let cacheStats = null;
 
 /* ------------------------------------------------------------------ */
 /* Utilitaires                                                         */
@@ -59,7 +60,7 @@ function annoncer(texte) {
 }
 
 function focusTitre() {
-  const titre = vue.querySelector("h1");
+  const titre = document.querySelector("#heros:not([hidden]) h1") || vue.querySelector("h1");
   if (!titre) return;
   titre.setAttribute("tabindex", "-1");
   titre.focus({ preventScroll: true });
@@ -80,11 +81,108 @@ function carteJour(fiche) {
   </section>`;
 }
 
+/* ------------------------------------------------------------------ */
+/* Contenus éditoriaux                                                 */
+/* ------------------------------------------------------------------ */
+const NOM = "Agbalẽ";
+const TITRE_BASE = `${NOM} — dictionnaire français–éwé`;
+
+const ETAPES = [
+  ["Cherche un mot", "Français d'abord. Les fautes de frappe sont rattrapées : « abaissment » propose « abaissement »."],
+  ["Lis la fiche", "Sens principal, expressions et précisions de sens. Chaque fiche garde la graphie numérisée d'origine."],
+  ["Corrige", "Un bouton Signaler sur chaque fiche. Les corrections sont relues avant d'entrer dans la base."],
+];
+
+const FAQ = [
+  {
+    question: "D'où viennent les données ?",
+    reponse: "D'un dictionnaire français–éwé numérisé, converti en base interrogeable. L'identification précise de l'édition et la vérification des droits sont en cours : d'ici là, la consultation est ouverte mais la base n'est pas téléchargeable.",
+  },
+  {
+    question: "Pourquoi certaines traductions semblent-elles fausses ?",
+    reponse: "La numérisation a introduit des erreurs systématiques : lettres éwés remplacées par des accents (<span lang=\"ee\">î</span> pour <span lang=\"ee\">ƒ</span>, <span lang=\"ee\">ô</span> pour <span lang=\"ee\">ɔ</span>), mots collés, restes de notes de bas de page. Les règles de correction sont versionnées et ne s'appliquent qu'après validation ; le taux d'erreur estimé sera publié après relecture d'un échantillon de 200 sens.",
+  },
+  {
+    question: "Que montre le bouton « Texte d'origine » ?",
+    reponse: "Chaque terme affiché est une forme corrigée. Ce bouton révèle la graphie telle qu'elle a été numérisée, sans retouche — utile pour juger une correction ou signaler une erreur.",
+  },
+  {
+    question: "Pourquoi voit-on encore ê, ë, ï ou û ?",
+    reponse: "Ce sont des graphies d'origine en attente de validation. Les règles sûres (<span lang=\"ee\">ƒ</span>, <span lang=\"ee\">ɔ</span>, <span lang=\"ee\">ã</span>) sont déjà appliquées ; les autres attendent une relecture par un locuteur natif, parce qu'une conversion hâtive produirait des mots faux : <span lang=\"ee\">agbalẽ</span> (« livre ») ne s'écrit pas <span lang=\"ee\">agbalê</span>.",
+  },
+  {
+    question: "Les mots proposés sont-ils encore utilisés ?",
+    reponse: "Le lexique source est ancien : certains termes ont vieilli ou changé de sens. Le bouton Signaler permet justement de répondre à « ce mot est-il encore utilisé aujourd'hui ? ».",
+  },
+  {
+    question: "Comment signaler une erreur ou proposer une traduction ?",
+    reponse: "Sur chaque fiche, bouton Signaler : type de retour, message, contact facultatif. Les signalements sont relus avant d'entrer dans la base ; aucun n'est appliqué automatiquement.",
+  },
+  {
+    question: "Est-ce gratuit ? Faut-il un compte ?",
+    reponse: "Gratuit, sans compte, sans publicité et sans traceur. Le contact d'un signalement est facultatif et n'est jamais publié tel quel.",
+  },
+  {
+    question: "Peut-on télécharger la base ou l'utiliser ailleurs ?",
+    reponse: "Pas encore. Tant que les droits du lexique source ne sont pas établis, seul l'accès par la recherche est proposé ; aucun export n'est distribué.",
+  },
+  {
+    question: "Existe-t-il l'éwé vers le français ?",
+    reponse: "Pas dans cette version : la recherche va du français vers l'éwé. La base est déjà indexée dans les deux sens, la recherche inverse est prévue.",
+  },
+  {
+    question: "Y a-t-il de l'audio ou la prononciation ?",
+    reponse: "Pas en v1. Des enregistrements de locuteurs natifs, avec consentement écrit, sont envisagés pour la suite.",
+  },
+  {
+    question: "Comment écrire ɛ, ɔ, ɖ depuis mon téléphone ?",
+    reponse: "La barre de caractères sous le champ de recherche insère les sept lettres éwés ; un appui long insère la majuscule. Les touches font 44 px pour rester utilisables au pouce.",
+  },
+  {
+    question: "Et l'accessibilité ?",
+    reponse: 'Contrastes conformes au seuil AA, zones tactiles de 44 px, navigation clavier avec focus visible, textes éwés balisés <code>lang="ee"</code> pour les lecteurs d\'écran, et mode sombre automatique selon le système.',
+  },
+];
+
+function blocEtapes() {
+  return `<section aria-labelledby="titre-etapes">
+    <h2 id="titre-etapes">Comment ça marche</h2>
+    <ol class="etapes">${ETAPES.map(
+      ([titre, texte], index) => `<li>
+        <span class="etape-num" aria-hidden="true">${index + 1}</span>
+        <div><h3>${titre}</h3><p>${texte}</p></div>
+      </li>`,
+    ).join("")}</ol>
+  </section>`;
+}
+
+function blocFaq(items, avecLien = false) {
+  return `<section class="bloc-faq" aria-labelledby="titre-faq">
+    <h2 id="titre-faq">Questions fréquentes</h2>
+    <div class="faq">${items
+      .map((item) => `<details><summary>${item.question}</summary><p>${item.reponse}</p></details>`)
+      .join("")}</div>
+    ${avecLien ? '<p class="faq-lien"><a href="#/faq">Toutes les questions</a></p>' : ""}
+  </section>`;
+}
+
+async function chiffresHeros() {
+  const cible = document.getElementById("heros-chiffres");
+  if (!cible) return;
+  try {
+    cacheStats = cacheStats || (await appel("/v1/stats"));
+    cible.textContent = `${cacheStats.entrees.toLocaleString("fr-FR")} entrées · ${cacheStats.traductions.toLocaleString("fr-FR")} traductions · français → éwé`;
+    cible.hidden = false;
+  } catch { /* les chiffres ne sont pas essentiels */ }
+}
+
 async function vueAccueil() {
+  document.title = TITRE_BASE;
   vue.innerHTML = `
-    <h1 class="sr-only">Dictionnaire français–éwé</h1>
-    <p class="intro">Cherche un mot français : tu obtiens l'éwé, ses sens et ses expressions.</p>
-    <div id="jour"><p class="chargement">Mot du jour…</p></div>`;
+    <div id="jour"><p class="chargement">Mot du jour…</p></div>
+    ${blocEtapes()}
+    ${blocFaq(FAQ.slice(0, 3), true)}`;
+  chiffresHeros();
   try {
     cacheJour = cacheJour || (await appel("/v1/word-of-the-day"));
     const cible = document.getElementById("jour");
@@ -93,6 +191,18 @@ async function vueAccueil() {
     const cible = document.getElementById("jour");
     if (cible) cible.innerHTML = messageErreur(erreur);
   }
+}
+
+function vueFaq() {
+  document.title = `Questions fréquentes — ${NOM}`;
+  vue.innerHTML = `
+    <h1>Questions fréquentes</h1>
+    <p class="intro">Ce qui fonctionne, ce qui reste fragile, et pourquoi.</p>
+    <div class="faq">${FAQ.map(
+      (item) => `<details><summary>${item.question}</summary><p>${item.reponse}</p></details>`,
+    ).join("")}</div>
+    <p class="transparence">Une erreur à signaler, une traduction à proposer ?
+      <button type="button" class="lien" data-action="signaler-general">Écrivez-nous</button>.</p>`;
 }
 
 function ligneResultat(r) {
@@ -127,6 +237,7 @@ function rendreResultats(q, donnees) {
 }
 
 async function vueRecherche(q) {
+  document.title = `${q} — ${NOM}`;
   if (champ.value !== q) champ.value = q;
   boutonEffacer.hidden = !q;
   const numero = ++jeton;
@@ -217,6 +328,7 @@ async function vueMot(id) {
     const fiche = await appel(`/v1/entry/${id}?brut=true`);
     if (numero !== jeton) return;
     vue.innerHTML = rendreFiche(fiche);
+    document.title = `${fiche.mot} — ${NOM}`;
     vue.dataset.mot = fiche.mot;
     vue.dataset.id = String(fiche.id);
     annoncer(`Fiche de ${fiche.mot}`);
@@ -227,6 +339,7 @@ async function vueMot(id) {
 }
 
 function vueApprendre() {
+  document.title = `Apprendre l'éwé — ${NOM}`;
   const lecons = [
     ["L'alphabet éwé", "Lettres spéciales, digraphes, majuscules"],
     ["Écrire l'éwé", "Saisir les bons caractères, distinguer d et ɖ"],
@@ -247,6 +360,7 @@ function vueApprendre() {
 }
 
 async function vueAPropos() {
+  document.title = `À propos — ${NOM}`;
   vue.innerHTML = `
     <h1>À propos</h1>
     <p class="intro">Un dictionnaire de consultation, français vers éwé, construit sur un
@@ -289,6 +403,7 @@ const routes = [
   { motif: /^\/?$/, vue: vueAccueil, nav: "dictionnaire" },
   { motif: /^\/recherche\/(.+)$/, vue: (m) => vueRecherche(decodeURIComponent(m[1])), nav: "dictionnaire" },
   { motif: /^\/mot\/(\d+)$/, vue: (m) => vueMot(Number(m[1])), nav: "dictionnaire" },
+  { motif: /^\/faq\/?$/, vue: vueFaq, nav: "" },
   { motif: /^\/apprendre\/?$/, vue: vueApprendre, nav: "apprendre" },
   { motif: /^\/a-propos\/?$/, vue: vueAPropos, nav: "a-propos" },
 ];
@@ -305,6 +420,9 @@ async function rendre({ focus = false } = {}) {
   const route = routes.find((r) => r.motif.test(chemin)) || routes[0];
   const correspondance = chemin.match(route.motif) || [];
   majNavigation(route.nav);
+  const accueil = chemin === "/";
+  document.getElementById("heros").hidden = !accueil;
+  document.getElementById("exemples").hidden = !accueil;
   await route.vue(correspondance);
   if (focus) focusTitre();
 }
@@ -449,7 +567,7 @@ vue.addEventListener("click", async (evenement) => {
     await copier(texteACopier());
   } else if (action === "partager") {
     const url = `${location.origin}${location.pathname}#/mot/${vue.dataset.id}`;
-    const titre = `${vue.dataset.mot} — dictionnaire français–éwé`;
+    const titre = `${vue.dataset.mot} — ${NOM}, dictionnaire français–éwé`;
     if (navigator.share) {
       try { await navigator.share({ title: titre, url }); } catch { /* partage annulé */ }
     } else {
@@ -457,6 +575,8 @@ vue.addEventListener("click", async (evenement) => {
     }
   } else if (action === "signaler") {
     ouvrirSignalement(Number(vue.dataset.id), vue.dataset.mot);
+  } else if (action === "signaler-general") {
+    ouvrirSignalement(null, null);
   } else if (action === "brut") {
     const actif = document.body.classList.toggle("afficher-brut");
     evenement.target.closest("[data-action]").setAttribute("aria-pressed", String(actif));
@@ -521,4 +641,23 @@ formSignalement.addEventListener("submit", async (evenement) => {
 /* ------------------------------------------------------------------ */
 /* Démarrage                                                           */
 /* ------------------------------------------------------------------ */
+document.getElementById("commencer").addEventListener("click", () => {
+  const doux = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  formRecherche.scrollIntoView({ behavior: doux ? "smooth" : "auto", block: "center" });
+  champ.focus({ preventScroll: true });
+  annoncer("Champ de recherche prêt : tape un mot français.");
+});
+
+document.getElementById("exemples").addEventListener("click", (evenement) => {
+  const bouton = evenement.target.closest("[data-exemple]");
+  if (!bouton) return;
+  const mot = bouton.dataset.exemple;
+  champ.value = mot;
+  boutonEffacer.hidden = false;
+  pousserAdresse(`#/recherche/${encodeURIComponent(mot)}`);
+  vueRecherche(mot);
+});
+
+document.getElementById("signaler-general").addEventListener("click", () => ouvrirSignalement(null, null));
+
 rendre();

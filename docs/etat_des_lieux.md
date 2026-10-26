@@ -95,7 +95,7 @@ L'audit annonce « `ɖ ƒ ʋ` absentes ». C'est vrai à la lettre, faux en prat
 |---|---|---|---|
 | 1 | **Validation de la table d'orthographe** sur un échantillon (étude §2.5) | la qualité de tout ce qui s'affiche ; le taux d'erreur publié | faire relire 50 à 60 candidats par un locuteur natif, en une passe ; je peux produire la liste triée par fréquence avec la conversion proposée |
 | 2 | **Droits du lexique** (piste Boston College) | publication du fichier complet, page « À propos », `LICENCE.md` | vérifier avant le lot 3 ; en attendant, recherche seule, pas de téléchargement (étude §9) |
-| 3 | Nom du produit + monogramme (`ɛ` ou `ɖ`) | en-tête, favicon, partage | après test du `ɖ` en 16 px |
+| 3 | Monogramme (`ɛ` ou `ɖ`) | favicon | nom tranché le 26 octobre 2026 : **Agbalẽ** (voir §12) ; reste le monogramme, à tester en 16 px |
 | 4 | Andika seule, ou Andika + Charis SIL pour les leçons | lot 3 | Andika seule (plus léger, une seule famille) |
 | 5 | Mode sombre en v1 ou v1.1 | lot 3 | en v1 : les variables existent déjà |
 | 6 | Nature `adj` (1 occurrence) | filtres et étiquettes | confirmer avec la liste d'abréviations du lexique |
@@ -115,7 +115,7 @@ L'ordre suit la priorité écrite dans l'étude — qualité des données d'abor
 | **2. Recherche** | `pipeline/recherche.py` : cinq niveaux classés, fiche d'un mot, mot du jour, CLI d'inspection | **livré** : les 5 requêtes du golden set passent, médiane 1,9 ms pour un objectif de 300 ms (détail §7) |
 | **3. API** | `api/main.py` : six routes `/v1`, CORS restreint, limiteur sur `/report`, `contributions.db` séparée | **livré** : 21 tests verts + serveur réel vérifié (détail §8) |
 | **4. Web** | `web/` : jetons de la charte, quatre écrans, barre de caractères, Andika auto-hébergée | **livré** : parcours complet vérifié sous jsdom contre l'API réelle ; reste le test visuel sur appareils (détail §9) |
-| **5. Qualité et lancement** | échantillon de 200 sens, taux d'erreur, page de transparence, `README`, `LICENCE` | chiffres publiés, attribution en place |
+| **5. Qualité et lancement** | échantillon de 200 sens, taux d'erreur, page de transparence, `README`, `LICENCE` | **partiel** : échantillon et circuit du taux livrés, `README` et `LICENCE` écrits ; taux en attente de relecture humaine (détail §10) |
 | **6. Apprendre l'éwé** | leçons, quiz depuis les entrées `verifie = 1` | après la v1 |
 
 Réalisme : le calendrier de l'étude (9-10 jours à deux) suppose deux personnes sur les lots 4-5. En solo assisté, compter plutôt 2 à 3 jours par lot de données/API, 3 à 4 pour l'interface.
@@ -230,9 +230,9 @@ Site statique, sans framework ni étape de build : `web/index.html` charge `styl
 |---|---|
 | `web/styles/tokens.css` | jetons de la charte §9, recopiés tels quels (clair + sombre) |
 | `web/styles/app.css` | mise en page et composants ; aucune couleur ni taille en dur |
-| `web/styles/polices.css` | quatre `@font-face` Andika, `unicode-range` calculés sur la **vraie table cmap** de chaque fichier |
+| `web/styles/polices.css` | deux `@font-face` Andika (sous-ensembles fusionnés, voir §12) |
 | `web/js/app.js` | routeur par ancre, recherche différée de 200 ms, fiche, signalement |
-| `web/fonts/` | Andika 400 et 700, sous-ensembles latin (18,8 Ko) et latin-ext (79,5 Ko) |
+| `web/fonts/` | Andika 400 et 700, 70,3 Ko par graisse (sous-ensembles fusionnés) |
 
 **Écrans :** accueil (recherche, barre de caractères, mot du jour en ocre pâle), résultats avec « Vouliez-vous dire ? », fiche groupée en *Sens principal / Expressions / Précisions de sens*, à propos avec les chiffres de `/v1/stats`. Routes : `#/`, `#/recherche/<q>`, `#/mot/<id>`, `#/apprendre`, `#/a-propos`.
 
@@ -245,7 +245,7 @@ Site statique, sans framework ni étape de build : `web/index.html` charge `styl
 **Quatre limites assumées :**
 
 1. **Routage par ancre**, pas par chemin : `#/mot/2` au lieu de `/mot/abaisser`. Les liens sont partageables, mais le référencement et les URL lisibles demanderont un rendu par page (lot 5).
-2. **`ẽ` (U+1EBD) est absent des deux sous-ensembles Andika** — mesuré, la charte ne l'avait pas relevé. Le tilde combinant U+0303 est présent, donc `e` + U+0303 s'affiche correctement. Si la règle `ê → ẽ` est validée, il faudra stocker en NFD ou prévoir une police de repli.
+2. **`ẽ` (U+1EBD) est absent des deux sous-ensembles Andika** — mesuré, la charte ne l'avait pas relevé. Résolu au moment du choix du nom : les sous-ensembles sont fusionnés et le tilde se compose (voir §12).
 3. **La barre de caractères est peu utile en v1** : la recherche ne va que du français vers l'éwé. Elle reste en place comme le demande la charte et deviendra fonctionnelle avec la recherche inverse (v2).
 4. **Nom du produit et monogramme encore provisoires** : « Dictionnaire français–éwé » et `ɛ` sur ivoire. Les décisions 2 et 3 de la charte restent ouvertes.
 
@@ -260,6 +260,79 @@ Le test visuel sur appareils réels reste à faire : chaîne de contrôle de la 
 
 ---
 
-## 10. Suite immédiate
+## 10. Lot 5 — accueil, FAQ, qualité et documents (26 octobre 2026)
 
-Lot 5 (qualité et publication) : échantillon de 200 sens et taux d'erreur affiché, `README.md` (chiffres, schéma, instructions, attribution), `LICENCE.md` toujours bloquée par la vérification des droits, troncature des restes de bas de page OCR, et rendu par page pour des URL lisibles.
+### Page d'accueil
+
+Un héros au-dessus du champ de recherche : surtitre, titre de promesse (« Cherche un mot français, obtiens l'éwé »), texte court, bouton **Commencer** et bouton *Questions fréquentes*, puis les chiffres de la base (6 937 entrées, 15 267 traductions). Sous le champ, quatre exemples cliquables (eau, maison, abaisser, lumière).
+
+Sous la ligne de flottaison : le mot du jour, un bloc **Comment ça marche** en trois étapes (chercher, lire, corriger) et un aperçu de la FAQ avec trois questions et un lien vers la page complète. Le bouton **Commencer** amène le focus dans le champ de recherche et fait défiler la page, en respectant `prefers-reduced-motion`.
+
+### FAQ
+
+Page `#/faq`, **douze questions** en `<details>` natifs — donc accessibles au clavier sans JavaScript, uniquement stylés. Elles répondent sur : l'origine des données, les erreurs de transcription, le bouton « Texte d'origine », les graphies encore en attente (`ê`, `ë`, `ï`, `û`), l'ancienneté des mots, le signalement, la gratuité et l'absence de compte, le téléchargement impossible tant que les droits ne sont pas vérifiés, l'absence d'éwé → français et d'audio, la saisie des lettres éwés, l'accessibilité.
+
+La charte fixe trois entrées de navigation ; la FAQ n'en ajoute pas une quatrième : elle est atteignable par le héros, le pied de page et un renvoi depuis « À propos ».
+
+### Qualité et documents
+
+- **`pipeline/echantillon.py`** — tirage reproductible de 200 sens (graine 42) vers `audit_out/echantillon_200.csv`, colonnes à remplir ; puis `--depouiller` qui compte les verdicts, calcule le taux et l'écrit dans `data/qualite.csv`.
+- **Circuit du taux** — `build_dictionary.py` lit le dernier taux mesuré et le stocke dans `meta` ; `/v1/stats` le publie ; l'interface affiche « en cours de mesure » tant qu'il vaut `null`.
+- **`README.md`** — démarrage, organisation, chiffres d'audit, règles d'orthographe, niveaux de recherche, routes, tests, limites connues.
+- **`LICENCE.md`** — statut réel : licence du code non choisie, droits du lexique non vérifiés (consultation seule, pas d'export), Andika sous SIL OFL 1.1 avec le texte intégral dans `web/fonts/OFL.txt`.
+
+### Vérifications
+
+**73 tests verts** (51 pipeline + 22 API). Le parcours de la page a été rejoué sous jsdom contre l'API réelle : héros et chiffres affichés, **Commencer** place le focus dans le champ, un exemple lance la recherche (maison → 2 résultats), fiche et titre de page corrects, FAQ à 12 questions avec héros masqué, signalement général ouvert depuis le pied de page, retour à l'accueil qui rétablit héros et exemples.
+
+Poids de la page : **55 Ko hors polices** (objectif : 200 Ko).
+
+### Ce qui reste
+
+Le taux d'erreur ne peut pas être calculé sans relecture humaine de l'échantillon : les 200 lignes sont prêtes dans `audit_out/echantillon_200.csv`. Restent aussi les URL lisibles, la troncature des restes de bas de page OCR, le test sur appareils réels, le nom du produit, le monogramme et la vérification des droits.
+
+---
+
+## 11. Avant publication
+
+Quatre choses bloquent une mise en ligne sérieuse, dans cet ordre :
+
+1. **Droits du lexique** — sans vérification, pas de dépôt public du fichier ni d'export. C'est la seule inconnue juridique du projet.
+2. **Taux d'erreur** — les 200 lignes sont prêtes ; il faut une relecture humaine (idéalement un locuteur natif) pour remplir la colonne `verdict`, puis :
+   ```bash
+   python pipeline/echantillon.py --depouiller audit_out/echantillon_200.csv
+   python pipeline/build_dictionary.py
+   ```
+   Le taux apparaît alors dans `/v1/stats` et sur la page « À propos ».
+3. **Test sur appareils réels** — la chaîne de contrôle de la charte (`ɖ ɛ ƒ ɣ ŋ ɔ ʋ Ɖ Ɛ Ƒ Ɣ Ŋ Ɔ Ʋ ɔ́ ɛ̀ ɛ̃ ɔ̄`) sur un Android d'entrée de gamme, un iPhone et un ordinateur, pour vérifier qu'aucune lettre éwé ne sort en carré.
+4. **Nom du produit et monogramme** — décisions 2 et 3 de la charte, encore ouvertes ; le nom actuel est un intitulé de travail.
+
+Ensuite seulement : déploiement (API + front séparés), URL lisibles par rendu de page, et les trois publications de lancement prévues par l'étude §15.
+
+---
+
+## 12. Nom du produit : Agbalẽ (26 octobre 2026)
+
+**Décision :** le dictionnaire s'appelle **Agbalẽ**, mot éwé pour « livre » (entrée `livre` du lexique : `agbalê`). L'atelier reste *Ewe Lab* ; le produit a son nom propre.
+
+### La graphie : `ẽ`, pas `é`
+
+Trois candidats ont été écartés : *Nunya* (déjà pris par le tuteur IA du même auteur), *Lexi* (au moins sept produits homonymes dans la catégorie dictionnaire/apprentissage), *Nya* (trop proche de *Nunya* à l'oreille).
+
+Le mot s'écrit `agbalẽ` avec un **tilde** : `ẽ` est la voyelle nasale. `Agbalé`, avec un accent aigu, n'est pas un mot éwé — c'est précisément le type d'erreur que le projet corrige. Le nom est donc écrit `Agbalẽ` partout, y compris dans le mot-symbole.
+
+### Conséquence technique : fusion des sous-ensembles de police
+
+Le glyphe précomposé U+1EBD n'existe dans aucun des deux sous-ensembles Andika (mesuré au lot 4). Le rendu dépend donc de la décomposition `e` + tilde combinant (U+0303).
+
+Or le découpage `unicode-range` du lot 4 plaçait `e` et `̃` dans des fichiers différents : **deux fichiers distincts ne composent pas un accent**. Le tilde se serait posé au hasard.
+
+Décision : les sous-ensembles latin et latin-ext sont **fusionnés** en un seul fichier par graisse (`web/fonts/andika-400.woff2`, `andika-700.woff2`, 70,3 Ko chacun, 1 322 points de code). Écart assumé par rapport à la charte §3.5, qui voyait dans le découpage une économie : ici le texte éwé est présent sur presque tous les écrans, et le découpage cassait le rendu.
+
+Bilan de poids : 140 Ko de polices au total au lieu de 197 Ko avec les quatre fichiers, et une composition correcte.
+
+**Vérifié** par façonnage HarfBuzz sur la police fusionnée : `Agbalẽ` produit `A g b a l e + tildecomb` avec une avance nulle pour le tilde, donc attaché à la lettre ; le texte en NFC (U+1EBD) est décomposé automatiquement par HarfBuzz, ce qui rend le rendu indépendant de la forme saisie.
+
+### Ce qui a changé
+
+`<title>` et description, mot-symbole `Agbalẽ` avec sous-titre « dictionnaire français–éwé », titres de page (`abaisser — Agbalẽ`), titre de l'API FastAPI, `README.md`, `LICENCE.md`, libellé du favicon. Le monogramme reste `ɛ` : la décision 3 de la charte n'est pas tranchée.

@@ -30,9 +30,11 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
   padding: 16px 16px 12px;
 }
 .marque {
-  font-weight: 700; font-size: 1.0625rem; line-height: 1.2;
+  display: inline-flex; flex-direction: column; line-height: 1.15;
   color: var(--texte); text-decoration: none;
 }
+.marque-nom { font-weight: 700; font-size: 1.25rem; }
+.marque-sous { font-size: 0.75rem; font-weight: 400; color: var(--texte-sec); }
 .nav-haut { display: flex; gap: 16px; }
 .nav-haut a {
   color: var(--texte-sec); text-decoration: none;
@@ -140,7 +142,10 @@ main {
 .fiche-entete h1 {
   font-size: 2rem; line-height: 1.2; margin: 0 0 4px; font-weight: 700;
 }
-#vue > h2 { font-size: 1.125rem; margin: 24px 0 6px; }
+#vue h2 { font-size: 1.25rem; margin: 28px 0 10px; }
+#vue .groupe h2 {
+  font-size: var(--t-petit); font-weight: 700; color: var(--texte-sec); margin: 0 0 6px;
+}
 .sens + .sens { margin-top: 10px; }
 .chiffres {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -264,10 +269,78 @@ dialog .message { min-height: 1.5em; font-size: var(--t-petit); margin: 12px 0 0
 dialog .message.ok { color: var(--succes); }
 dialog .message.ko { color: var(--erreur); }
 
+/* ----- Accueil : héros, étapes, FAQ ----- */
+.heros { margin: 8px 0 28px; }
+.surtitre {
+  margin: 0 0 8px; font-size: var(--t-petit); font-weight: 700; color: var(--primaire);
+}
+.heros-titre {
+  font-size: 2rem; line-height: 1.2; margin: 0 0 12px; font-weight: 700; max-width: 24ch;
+}
+.heros-texte { margin: 0 0 20px; color: var(--texte-sec); max-width: 48ch; }
+.heros-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.heros-chiffres {
+  margin: 16px 0 0; font-size: var(--t-petit); color: var(--texte-discret);
+}
+
+.exemples {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin: 0 0 16px; font-size: var(--t-petit); color: var(--texte-sec);
+}
+.exemple {
+  font: inherit; font-size: var(--t-petit); min-height: 36px; padding: 4px 12px;
+  border-radius: var(--rayon); border: 1px solid var(--bordure-champ);
+  background: var(--surface); color: var(--texte); cursor: pointer;
+}
+.exemple:hover { background: var(--fond-alt); }
+
+.etapes {
+  list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 12px;
+}
+.etapes li {
+  display: flex; gap: 12px; align-items: flex-start;
+  background: var(--surface); border: 1px solid var(--bordure);
+  border-radius: var(--rayon-carte); padding: 14px;
+}
+.etapes h3 { margin: 0 0 2px; font-size: 1rem; }
+.etapes p { margin: 0; font-size: var(--t-petit); color: var(--texte-sec); }
+.etape-num {
+  flex: 0 0 auto; width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--primaire-fond);
+  color: var(--primaire); font-weight: 700; font-size: var(--t-petit);
+}
+
+.faq { border-top: 1px solid var(--bordure); margin: 0 0 8px; }
+.faq details { border-bottom: 1px solid var(--bordure); }
+.faq summary {
+  position: relative; display: flex; align-items: center;
+  min-height: var(--zone-tactile); padding: 14px 32px 14px 0;
+  font-weight: 700; cursor: pointer; list-style: none;
+}
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after {
+  content: "+"; position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  color: var(--primaire); font-size: 1.25rem; font-weight: 700;
+}
+.faq details[open] summary::after { content: "−"; }
+.faq details p { margin: 0 0 16px; color: var(--texte-sec); font-size: var(--t-petit); max-width: 64ch; }
+.faq-lien { margin: 12px 0 0; }
+
+.lien {
+  font: inherit; background: none; border: 0; padding: 0;
+  color: var(--primaire); text-decoration: underline; cursor: pointer;
+}
+code {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.9em; background: var(--fond-alt); padding: 1px 4px; border-radius: 4px;
+}
+
 /* ----- Points de rupture ----- */
 @media (min-width: 600px) {
   .onglets { display: none; }
   .entete { padding-top: 24px; }
+  .etapes { grid-template-columns: repeat(3, 1fr); }
+  .heros-titre { font-size: 2.25rem; }
 }
 @media (max-width: 599px) {
   .nav-haut { display: none; }

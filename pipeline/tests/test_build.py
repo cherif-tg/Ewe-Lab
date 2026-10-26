@@ -67,7 +67,7 @@ class BuildTest(unittest.TestCase):
         (d / "ortho.csv").write_text(ORTHO, encoding="utf-8")
         (d / "corr.csv").write_text(CORR, encoding="utf-8")
         cls.db_path = d / "test.db"
-        cls.stats = bd.build(FIXTURE, cls.db_path, d / "corr.csv", d / "ortho.csv", log=lambda *a: None)
+        cls.stats = bd.build(FIXTURE, cls.db_path, d / "corr.csv", d / "ortho.csv", qualite_path=d / "qualite_absente.csv", log=lambda *a: None)
         cls.con = sqlite3.connect(cls.db_path)
         cls.con.row_factory = sqlite3.Row
 

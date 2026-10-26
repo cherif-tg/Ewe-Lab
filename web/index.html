@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Dictionnaire français–éwé</title>
-  <meta name="description" content="Cherche un mot français, obtiens l'éwé, avec ses sens et ses expressions.">
+  <title>Agbalẽ — dictionnaire français–éwé</title>
+  <meta name="description" content="Agbalẽ, dictionnaire français–éwé : cherche un mot français, obtiens l'éwé, avec ses sens et ses expressions.">
   <meta name="theme-color" content="#FBF8F2">
   <!-- Adresse de l'API. Vide = même origine (utile derrière un proxy). -->
   <meta name="api-base" content="http://127.0.0.1:8000">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="preload" href="fonts/andika-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/andika-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="styles/polices.css">
   <link rel="stylesheet" href="styles/tokens.css">
   <link rel="stylesheet" href="styles/app.css">
@@ -19,7 +19,10 @@
   <a class="saut" href="#contenu">Aller au contenu</a>
 
   <header class="entete">
-    <a class="marque" href="#/">Dictionnaire français–éwé</a>
+    <a class="marque" href="#/">
+      <span class="marque-nom">Agbalẽ</span>
+      <span class="marque-sous">dictionnaire français–éwé</span>
+    </a>
     <nav class="nav-haut" aria-label="Navigation principale">
       <a href="#/" data-nav="dictionnaire">Dictionnaire</a>
       <a href="#/apprendre" data-nav="apprendre">Apprendre</a>
@@ -28,6 +31,18 @@
   </header>
 
   <main id="contenu">
+    <section class="heros" id="heros" hidden>
+      <p class="surtitre">Français → éwé</p>
+      <h1 class="heros-titre">Cherche un mot français, obtiens l'éwé.</h1>
+      <p class="heros-texte">Ses sens, ses expressions et sa graphie d'origine. Gratuit, sans compte,
+        pensé pour le téléphone.</p>
+      <div class="heros-actions">
+        <button class="bouton plein" type="button" id="commencer">Commencer</button>
+        <a class="bouton" href="#/faq">Questions fréquentes</a>
+      </div>
+      <p class="heros-chiffres" id="heros-chiffres" hidden></p>
+    </section>
+
     <form class="recherche" role="search" id="form-recherche" autocomplete="off">
       <svg class="loupe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
            stroke-linecap="round" aria-hidden="true">
@@ -58,6 +73,14 @@
               aria-label="Majuscules" title="Insérer en majuscule (ou appui long sur une touche)">Maj</button>
     </div>
 
+    <p class="exemples" id="exemples" hidden>
+      <span>Essayer :</span>
+      <button type="button" class="exemple" data-exemple="eau">eau</button>
+      <button type="button" class="exemple" data-exemple="maison">maison</button>
+      <button type="button" class="exemple" data-exemple="abaisser">abaisser</button>
+      <button type="button" class="exemple" data-exemple="lumière">lumière</button>
+    </p>
+
     <div id="vue"></div>
   </main>
 
@@ -69,7 +92,9 @@
 
   <footer class="pied">
     <p>Données issues d'un lexique français–éwé numérisé, en cours de correction.
-       <a href="#/a-propos">Sources, chiffres et transparence</a>.</p>
+       <a href="#/a-propos">Sources, chiffres et transparence</a> ·
+       <a href="#/faq">Questions fréquentes</a> ·
+       <button type="button" class="lien" id="signaler-general">Signaler un problème</button></p>
   </footer>
 
   <dialog id="dialogue-signalement" aria-labelledby="titre-signalement">

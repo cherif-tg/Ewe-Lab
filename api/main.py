@@ -35,6 +35,7 @@ from fastapi import FastAPI, HTTPException, Query, Request  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
+from pipeline import apprendre  # noqa: E402
 from pipeline.recherche import Moteur  # noqa: E402
 
 VERSION = "1.0.0"
@@ -106,6 +107,8 @@ class Stats(BaseModel):
     traductions: int
     regles_actives: int
     regles_en_attente: int
+    themes: int = 0
+    traductions_relues: int = 0
     importe_le: str | None = None
     version_donnees: str | None = None
     version_api: str = VERSION
@@ -120,6 +123,42 @@ class Signalement(BaseModel):
     type: Literal["erreur", "proposition", "usage"]
     texte: str = Field(min_length=2, max_length=500)
     contact: str | None = Field(default=None, max_length=100)
+
+
+class Lecon(BaseModel):
+    slug: str
+    titre: str
+    statut: str
+    relu_par: str = ""
+    sources: list[str] = Field(default_factory=list)
+    ordre: int
+    resume: str = ""
+
+
+class LeconComplete(Lecon):
+    html: str
+
+
+class Theme(BaseModel):
+    theme: str
+    mots: int
+    relus: int
+
+
+class Exercice(BaseModel):
+    id: int
+    question: str
+    reponse: str
+    propositions: list[str]
+    nature: str = ""
+
+
+class Quiz(BaseModel):
+    sens: Literal["fr_ewe", "ewe_fr"]
+    theme: str | None = None
+    disponibles: int = 0
+    items: list[Exercice] = Field(default_factory=list)
+    raison: str | None = Field(default=None, description="Pourquoi le quiz est vide, le cas échéant")
 
 
 # --------------------------------------------------------------------------
@@ -167,6 +206,15 @@ def _entier(meta: dict[str, str], cle: str) -> int:
         return 0
 
 
+def _taux(meta: dict[str, str]) -> float | None:
+    """Taux d'erreur mesuré, absent tant que l'échantillon n'est pas dépouillé."""
+    try:
+        valeur = meta.get("taux_erreur_estime", "")
+        return float(valeur) if valeur else None
+    except ValueError:
+        return None
+
+
 # --------------------------------------------------------------------------
 # Application
 # --------------------------------------------------------------------------
@@ -194,10 +242,10 @@ def creer_app(
             app.state.moteur.fermer()
 
     app = FastAPI(
-        title="API Dictionnaire français–éwé",
+        title="API Agbalẽ — dictionnaire français–éwé",
         version=VERSION,
         description=(
-            "Recherche français → éwé, fiches de mots, mot du jour et signalements. "
+            "Agbalẽ : recherche français → éwé, fiches de mots, mot du jour et signalements. "
             "Données issues d'un lexique numérisé ; les graphies d'origine restent accessibles."
         ),
         lifespan=lifespan,
@@ -273,9 +321,36 @@ def creer_app(
             traductions=_entier(meta, "traductions"),
             regles_actives=_entier(meta, "regles_actives"),
             regles_en_attente=_entier(meta, "regles_en_attente"),
+            themes=_entier(meta, "themes"),
+            traductions_relues=_entier(meta, "traductions_relues"),
             importe_le=importe_le,
             version_donnees=importe_le[:10] if importe_le else None,
+            taux_erreur_estime=_taux(meta),
         )
+
+    @app.get("/v1/learn/lessons", response_model=list[Lecon], summary="Leçons disponibles")
+    def lecons() -> list[Lecon]:
+        return [Lecon(**lecon) for lecon in apprendre.lister_lecons()]
+
+    @app.get("/v1/learn/lessons/{slug}", response_model=LeconComplete, summary="Contenu d'une leçon")
+    def lecon(slug: str) -> LeconComplete:
+        trouvee = apprendre.lire_lecon(slug)
+        if trouvee is None:
+            raise HTTPException(status_code=404, detail=f"Leçon « {slug} » introuvable")
+        return LeconComplete(**trouvee)
+
+    @app.get("/v1/learn/themes", response_model=list[Theme], summary="Thèmes de vocabulaire")
+    def themes_vocabulaire(request: Request) -> list[Theme]:
+        return [Theme(**theme) for theme in apprendre.themes(_moteur(request).con)]
+
+    @app.get("/v1/learn/quiz", response_model=Quiz, summary="Exercice de vocabulaire")
+    def quiz_vocabulaire(
+        request: Request,
+        theme: str | None = Query(None, max_length=40, description="Thème de vocabulaire ; vide = tous"),
+        n: int = Query(10, ge=1, le=30),
+        sens: Literal["fr_ewe", "ewe_fr"] = Query("fr_ewe"),
+    ) -> Quiz:
+        return Quiz(**apprendre.quiz(_moteur(request).con, n=n, theme=theme, sens=sens))
 
     @app.post("/v1/report", status_code=201, summary="Signaler une erreur ou proposer une traduction")
     def signalement(s: Signalement, request: Request) -> dict:

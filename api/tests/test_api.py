@@ -36,7 +36,7 @@ class ApiTest(unittest.TestCase):
         (d / "corr.csv").write_text(CORR, encoding="utf-8")
         cls.db = d / "api.db"
         cls.contrib = d / "contrib.db"
-        bd.build(FIXTURE, cls.db, d / "corr.csv", d / "ortho.csv", log=lambda *a: None)
+        bd.build(FIXTURE, cls.db, d / "corr.csv", d / "ortho.csv", qualite_path=d / "qualite_absente.csv", log=lambda *a: None)
 
     @classmethod
     def tearDownClass(cls):
@@ -199,6 +199,28 @@ class ApiTest(unittest.TestCase):
     def test_cors_origine_refusee(self):
         r = self.client.get("/v1/stats", headers={"Origin": "http://ailleurs.example"})
         self.assertIsNone(r.headers.get("access-control-allow-origin"))
+
+
+class TauxErreurTest(unittest.TestCase):
+    """Le taux mesuré par pipeline/echantillon.py remonte jusqu'à /v1/stats."""
+
+    def test_taux_publie_quand_il_est_mesure(self):
+        with tempfile.TemporaryDirectory() as dossier:
+            d = Path(dossier)
+            (d / "ortho.csv").write_text(ORTHO, encoding="utf-8")
+            (d / "corr.csv").write_text(CORR, encoding="utf-8")
+            (d / "qualite.csv").write_text(
+                "date;fichier;lignes;relues;erreurs;taux;details\n"
+                "2026-10-26;echantillon_200.csv;200;200;17;8.5;caractere:12 espacement:5\n",
+                encoding="utf-8",
+            )
+            db = d / "api.db"
+            bd.build(FIXTURE, db, d / "corr.csv", d / "ortho.csv", qualite_path=d / "qualite.csv",
+                     log=lambda *a: None)
+            app = creer_app(db, d / "contrib.db", origines=[ORIGINE])
+            with TestClient(app) as client:
+                corps = client.get("/v1/stats").json()
+            self.assertEqual(corps["taux_erreur_estime"], 8.5)
 
 
 class DemarrageTest(unittest.TestCase):

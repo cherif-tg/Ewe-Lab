@@ -34,7 +34,7 @@ class CascadeTest(unittest.TestCase):
         (d / "ortho.csv").write_text(ORTHO, encoding="utf-8")
         (d / "corr.csv").write_text(CORR, encoding="utf-8")
         cls.db = d / "test.db"
-        bd.build(FIXTURE, cls.db, d / "corr.csv", d / "ortho.csv", log=lambda *a: None)
+        bd.build(FIXTURE, cls.db, d / "corr.csv", d / "ortho.csv", qualite_path=d / "qualite_absente.csv", log=lambda *a: None)
         cls.moteur = Moteur(cls.db)
 
     @classmethod
