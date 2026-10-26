@@ -1,1 +1,13 @@
-data/
+# Source lexicale brute : non versionnée tant que les droits ne sont pas vérifiés (étude §9).
+# Les tables de règles (orthographe.csv, corrections.csv) restent versionnées.
+data/*.tsv
+
+# Sorties générées
+audit_out/
+dictionnaire.db
+contributions.db
+
+# Environnement Python
+.venv/
+__pycache__/
+*.pyc

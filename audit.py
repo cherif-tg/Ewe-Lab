@@ -37,7 +37,10 @@ def load(path: Path):
         head = f.read(4096)
         f.seek(0)
         delim = ";" if head.count(";") >= head.count("\t") else "\t"
-        reader = csv.DictReader(f, delimiter=delim)
+        # QUOTE_NONE : le lexique contient des apostrophes et des guillemets parasites
+        # (« gaze' », « d'anyi »). Avec la gestion des guillemets par défaut, csv
+        # fusionne les lignes suivantes dans un même champ et perd ~13 % du fichier.
+        reader = csv.DictReader(f, delimiter=delim, quoting=csv.QUOTE_NONE)
         rows, extra = [], 0
         for row in reader:
             if None in row:
