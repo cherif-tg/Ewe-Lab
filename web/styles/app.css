@@ -335,6 +335,64 @@ code {
   font-size: 0.9em; background: var(--fond-alt); padding: 1px 4px; border-radius: 4px;
 }
 
+/* ----- Apprendre : leçons et exercices ----- */
+.lecons { list-style: none; margin: 0 0 28px; padding: 0; }
+.lecons li { border-bottom: 1px solid var(--bordure); }
+.lecons a {
+  display: grid; grid-template-columns: 32px 1fr auto; gap: 4px 12px;
+  align-items: center; padding: 14px 4px; text-decoration: none; color: inherit;
+}
+.lecons a:hover { background: var(--fond-alt); }
+.lecon-num {
+  width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--primaire-fond); color: var(--primaire); font-weight: 700;
+  font-size: var(--t-petit);
+}
+.lecon-titre { font-weight: 700; }
+.lecon-resume { grid-column: 2 / -1; font-size: var(--t-petit); color: var(--texte-sec); }
+.badge { font-size: 0.75rem; padding: 2px 8px; border-radius: var(--rayon); grid-column: 3; }
+.badge.brouillon { background: var(--ocre-fond); color: var(--texte); }
+.badge.relu { background: var(--primaire-fond); color: var(--succes); }
+
+.lecon-contenu h2 { font-size: 1.25rem; margin: 28px 0 10px; }
+.lecon-contenu h3 { font-size: 1.0625rem; margin: 20px 0 6px; }
+.lecon-contenu p { max-width: 68ch; }
+.lecon-contenu ul { padding-left: 22px; margin: 0 0 16px; }
+.lecon-contenu li { margin-bottom: 6px; max-width: 66ch; }
+.lecon-contenu blockquote.retenir {
+  margin: 20px 0; padding: 12px 16px; border-left: 4px solid var(--primaire);
+  background: var(--primaire-fond); border-radius: 0 var(--rayon) var(--rayon) 0;
+  color: var(--texte-sec); max-width: 68ch;
+}
+.fil { font-size: var(--t-petit); margin: 0 0 12px; }
+.fil a { color: var(--texte-sec); }
+
+.quiz { border-top: 1px solid var(--bordure); padding-top: 16px; }
+.puces { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; padding: 0; }
+.puce {
+  font: inherit; font-size: var(--t-petit); min-height: 36px; padding: 4px 12px;
+  border-radius: var(--rayon); border: 1px solid var(--bordure-champ);
+  background: var(--surface); color: var(--texte); cursor: pointer;
+}
+.puce:hover { background: var(--fond-alt); }
+.puce[aria-pressed="true"] {
+  background: var(--primaire-fond); border-color: var(--primaire);
+  color: var(--primaire); font-weight: 700;
+}
+.discret { color: var(--texte-sec); font-size: var(--t-petit); }
+.quiz-question { font-size: 1.75rem; font-weight: 700; margin: 8px 0 16px; }
+.quiz-choix { display: grid; gap: 8px; margin: 0 0 16px; }
+.quiz-choix .bouton { justify-content: flex-start; width: 100%; text-align: left; }
+.quiz-choix .bouton.juste { background: var(--primaire-fond); border-color: var(--primaire); color: var(--succes); }
+.quiz-choix .bouton.faux { background: var(--accent-fond); border-color: var(--accent); color: var(--accent-texte); }
+.quiz-choix .bouton[disabled] { cursor: default; }
+.barre { height: 8px; background: var(--fond-alt); border-radius: 4px; overflow: hidden; margin: 0 0 12px; }
+.barre span { display: block; height: 100%; background: var(--primaire); }
+.quiz-retour { margin: 0 0 12px; font-size: var(--t-petit); }
+.quiz-retour.ok { color: var(--succes); }
+.quiz-retour.ko { color: var(--accent-texte); }
+.actions-quiz { display: flex; flex-wrap: wrap; gap: 8px; }
+
 /* ----- Points de rupture ----- */
 @media (min-width: 600px) {
   .onglets { display: none; }

@@ -36,7 +36,17 @@ class ApiTest(unittest.TestCase):
         (d / "corr.csv").write_text(CORR, encoding="utf-8")
         cls.db = d / "api.db"
         cls.contrib = d / "contrib.db"
-        bd.build(FIXTURE, cls.db, d / "corr.csv", d / "ortho.csv", qualite_path=d / "qualite_absente.csv", log=lambda *a: None)
+        (d / "themes.csv").write_text("theme;mot_fr\ntest;abaisser\ntest;abandon\n", encoding="utf-8")
+        (d / "verif.csv").write_text(
+            "mot_fr;relu_par;date\n"
+            "abaisser;TCA;2026-10-26\n"
+            "abandon;TCA;2026-10-26\n"
+            "bouilloire;TCA;2026-10-26\n"
+            "s'abaisser;TCA;2026-10-26\n",
+            encoding="utf-8",
+        )
+        bd.build(FIXTURE, cls.db, d / "corr.csv", d / "ortho.csv", qualite_path=d / "qualite_absente.csv",
+                 themes_path=d / "themes.csv", verifications_path=d / "verif.csv", log=lambda *a: None)
 
     @classmethod
     def tearDownClass(cls):
@@ -199,6 +209,58 @@ class ApiTest(unittest.TestCase):
     def test_cors_origine_refusee(self):
         r = self.client.get("/v1/stats", headers={"Origin": "http://ailleurs.example"})
         self.assertIsNone(r.headers.get("access-control-allow-origin"))
+
+    # -- apprendre ---------------------------------------------------------
+    def test_lecons(self):
+        r = self.client.get("/v1/learn/lessons")
+        self.assertEqual(r.status_code, 200)
+        lecons = r.json()
+        self.assertEqual(len(lecons), 5)
+        self.assertEqual(lecons[0]["slug"], "alphabet")
+        self.assertEqual(lecons[0]["statut"], "brouillon")
+        self.assertTrue(all("resume" in lecon for lecon in lecons))
+
+    def test_lecon(self):
+        r = self.client.get("/v1/learn/lessons/alphabet")
+        self.assertEqual(r.status_code, 200)
+        corps = r.json()
+        self.assertEqual(corps["titre"], "L'alphabet éwé")
+        self.assertIn("<h2>", corps["html"])
+        self.assertIn("ɖ", corps["html"])
+
+    def test_lecon_inconnue(self):
+        self.assertEqual(self.client.get("/v1/learn/lessons/inexistante").status_code, 404)
+
+    def test_themes(self):
+        themes = self.client.get("/v1/learn/themes").json()
+        self.assertEqual(len(themes), 1)
+        self.assertEqual(themes[0], {"theme": "test", "mots": 2, "relus": 2})
+
+    def test_quiz(self):
+        r = self.client.get("/v1/learn/quiz", params={"n": 3})
+        self.assertEqual(r.status_code, 200)
+        corps = r.json()
+        self.assertEqual(corps["sens"], "fr_ewe")
+        self.assertEqual(corps["disponibles"], 4)
+        self.assertTrue(corps["items"])
+        for item in corps["items"]:
+            self.assertEqual(len(item["propositions"]), 4)
+            self.assertIn(item["reponse"], item["propositions"])
+
+    def test_quiz_sans_mot_pour_le_theme(self):
+        corps = self.client.get("/v1/learn/quiz", params={"theme": "inconnu"}).json()
+        self.assertEqual(corps["items"], [])
+        self.assertIn("relu", corps["raison"])
+
+    def test_quiz_parametres_invalides(self):
+        for params in ({"n": 0}, {"n": 31}, {"sens": "diagonale"}):
+            with self.subTest(params=params):
+                self.assertEqual(self.client.get("/v1/learn/quiz", params=params).status_code, 422)
+
+    def test_stats_apprendre(self):
+        corps = self.client.get("/v1/stats").json()
+        self.assertEqual(corps["themes"], 1)
+        self.assertGreaterEqual(corps["traductions_relues"], 4)
 
 
 class TauxErreurTest(unittest.TestCase):

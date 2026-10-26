@@ -39,9 +39,10 @@ Pour un déploiement où l'API est servie sur la même origine, laisser cette va
 
 ```
 api/          service HTTP FastAPI (main.py) + tests
+content/      leçons (Markdown) et thèmes de vocabulaire
 data/         tables de règles et de qualité, versionnées ; le lexique brut ne l'est pas
 docs/         étude de cadrage, charte graphique, état des lieux
-pipeline/     import en base, moteur de recherche, échantillon qualité, tests
+pipeline/     import en base, moteur de recherche, module Apprendre, tests
 web/          interface statique : HTML, CSS, JS et Andika auto-hébergée
 ```
 
@@ -102,17 +103,51 @@ Inspection en ligne de commande : `python pipeline/recherche.py maison`.
 | `GET /v1/word-of-the-day?jour=` | mot du jour, déterministe par date |
 | `GET /v1/stats` | compteurs, version des données, taux d'erreur mesuré |
 | `POST /v1/report` | signalement, 201, 5 envois / 10 min par IP |
+| `GET /v1/learn/lessons` | leçons et leur statut de relecture |
+| `GET /v1/learn/lessons/{slug}` | contenu d'une leçon, rendu en HTML |
+| `GET /v1/learn/themes` | thèmes de vocabulaire, effectif et mots relus |
+| `GET /v1/learn/quiz?theme=&n=&sens=` | exercice à quatre propositions, sur mots relus uniquement |
 
 La base du dictionnaire est ouverte en lecture seule ; les signalements vivent dans
 `contributions.db`, un fichier distinct créé au démarrage.
 
-## Tests
+## Apprendre l'éwé
 
-73 tests, sans framework externe (`unittest`, compatible pytest) :
+Cinq leçons dans `content/lecons/` (Markdown avec un en-tête `statut` / `relu_par` / `sources`),
+chargées par `pipeline/apprendre.py` et servies par `/v1/learn/lessons`. Tant qu'une leçon est
+`brouillon`, l'interface affiche « Contenu en cours de relecture ».
+
+Le vocabulaire vient de `content/themes.csv` : quatre thèmes (salutations, famille, marché, temps),
+32 mots. **Les nombres manquent** : le lexique numérisé n'en contient aucun.
+
+### La porte qualité
+
+Seuls les mots **relus** entrent dans les exercices. Un mot ne compte comme relu que si
+`data/verifications.csv` porte un nom dans la colonne `relu_par` :
+
+```csv
+mot_fr;relu_par;date
+merci;TCA;2026-10-26
+salut;;
+```
+
+Ici, `merci` est relu, `salut` ne l'est pas. Après avoir rempli le fichier :
 
 ```bash
-python -m unittest discover -s pipeline/tests -v   # 51 tests : import, recherche, échantillon
-python -m unittest discover -s api/tests -v        # 22 tests : routes, validation, débit, CORS, taux
+python pipeline/build_dictionary.py
+```
+
+Le quiz s'ouvre alors pour ce mot (`/v1/learn/quiz` renvoie `items: []` et une `raison` tant qu'il
+y a moins de quatre mots relus). La progression de l'apprenant — trois boîtes, une bonne réponse
+fait monter, une erreur ramène à la première — vit dans le navigateur, jamais sur le serveur.
+
+## Tests
+
+98 tests, sans framework externe (`unittest`, compatible pytest) :
+
+```bash
+python -m unittest discover -s pipeline/tests -v   # 68 tests : import, recherche, échantillon, leçons, quiz
+python -m unittest discover -s api/tests -v        # 30 tests : routes, validation, débit, CORS, taux, apprendre
 ```
 
 ## Qualité
@@ -153,3 +188,5 @@ lettre.
 - **Test visuel sur appareils réels** (Android d'entrée de gamme, iPhone, ordinateur) avec la
   chaîne de contrôle de la charte.
 - **Monogramme** encore provisoire (`ɛ` sur ivoire), décision 3 de la charte.
+- **Leçons non relues** : les cinq sont en `brouillon`, aucune n'est validée par un locuteur natif.
+- **Aucun mot relu** : le quiz est vide tant que `data/verifications.csv` n'est pas rempli.

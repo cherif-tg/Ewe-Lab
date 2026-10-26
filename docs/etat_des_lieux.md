@@ -336,3 +336,51 @@ Bilan de poids : 140 Ko de polices au total au lieu de 197 Ko avec les quatre fi
 ### Ce qui a changé
 
 `<title>` et description, mot-symbole `Agbalẽ` avec sous-titre « dictionnaire français–éwé », titres de page (`abaisser — Agbalẽ`), titre de l'API FastAPI, `README.md`, `LICENCE.md`, libellé du favicon. Le monogramme reste `ɛ` : la décision 3 de la charte n'est pas tranchée.
+
+---
+
+## 13. Lot 6 — Apprendre l'éwé (26 octobre 2026)
+
+### Contenu
+
+Cinq leçons dans `content/lecons/`, en Markdown avec en-tête (`titre`, `slug`, `ordre`, `statut`, `relu_par`, `sources`) : alphabet, écrire, lire, tons, vocabulaire. Toutes en `brouillon` : l'interface affiche « Contenu en cours de relecture » et aucune ne se présente comme validée.
+
+`pipeline/apprendre.py` rend un **sous-ensemble volontairement limité** de Markdown — titres, listes, citations, gras, italique, code, liens. Tout est échappé avant transformation, donc aucune balise de la source ne passe ; un lien `javascript:` est réduit à son libellé. Pas de tableaux ni de HTML brut : le contenu est écrit pour ce sous-ensemble.
+
+### Thèmes
+
+Quatre thèmes, **32 mots** (`content/themes.csv`) : salutations 7, famille 8, marché 10, temps 7.
+
+**Le thème « nombres » de l'étude est impossible** : le lexique numérisé ne contient aucun nombre (`un`, `deux`, `trois`… absents, vérifié sur la base entière). Constat ajouté au README plutôt que contourné.
+
+### Exercices et porte qualité
+
+`data/verifications.csv` est la seule source de vérité : un mot n'est relu que si la colonne `relu_par` est remplie. Le build marque alors toutes ses traductions `verifie = 1`, et `/v1/learn/quiz` ne puise que là. Sans mot relu (état actuel), l'API répond `items: []` avec une `raison` explicite et l'interface l'affiche — le module n'est pas cassé, il est vide par construction.
+
+Le quiz propose quatre choix, deux sens (français → éwé, éwé → français), les leurres étant pris parmi les mots de **même nature** grammaticale. Côté apprenant : bonne réponse en vert pâle avec coche et mention « Bonne réponse », mauvaise en terracotta pâle avec la bonne réponse affichée (charte §6.8), barre de progression de 8 px, bilan en fin de série.
+
+Progression : trois boîtes dans `localStorage` ; une bonne réponse monte d'une boîte, une erreur ramène à la première, et les mots de la boîte 1 sont servis en priorité.
+
+### API
+
+| Route | Rôle |
+|---|---|
+| `GET /v1/learn/lessons` | leçons, statut et résumé |
+| `GET /v1/learn/lessons/{slug}` | contenu rendu en HTML |
+| `GET /v1/learn/themes` | thèmes, effectif, mots relus |
+| `GET /v1/learn/quiz?theme=&n=&sens=` | QCM, sur mots relus uniquement |
+
+`/v1/stats` expose désormais `themes` et `traductions_relues`.
+
+### Vérifications
+
+**98 tests verts** (68 pipeline + 30 API). Le parcours complet a été rejoué sous jsdom contre une **base de démonstration à six mots relus** : liste des cinq leçons avec badges, puces de thèmes (`2/8 relus`, `0/7 relus`), question « marché » avec quatre choix, mauvaise réponse marquée `faux` et bonne marquée `juste`, retour « Pas tout à fait — la bonne réponse est asime », question suivante, progression écrite (`{"4309":{"boite":1,…}}`), page de leçon avec ses quatre sous-titres et son encadré.
+
+Un cas a été corrigé à cette occasion : choisir un thème trop petit (2 mots relus) donnait un message sec ; l'interface propose maintenant « Essaie sans filtre : tous les thèmes ».
+
+### Ce qui reste
+
+- **Relire les cinq leçons** — elles sont factuelles mais non validées par un locuteur natif ; les exemples restent prudents (aucun mot dont la traduction n'est pas dans la base).
+- **Remplir `data/verifications.csv`** — 32 lignes prêtes, il suffit d'un nom dans `relu_par`. Quatre mots relus ouvrent le quiz ; une vingtaine rend l'exercice intéressant.
+- L'exercice de **saisie** de la leçon 2 (recopier au clavier) n'est pas encore un exercice interactif.
+- L'**audio** reste en v2, avec consentement écrit.

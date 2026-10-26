@@ -338,25 +338,241 @@ async function vueMot(id) {
   }
 }
 
-function vueApprendre() {
+/* ------------------------------------------------------------------ */
+/* Apprendre l'éwé (étude §16)                                         */
+/* ------------------------------------------------------------------ */
+let quizThemes = [];
+let quizTheme = null;
+let quizSens = "fr_ewe";
+let quizState = null;
+
+const CLE_PROGRESSION = "agbale.progression";
+
+function lireProgression() {
+  try { return JSON.parse(localStorage.getItem(CLE_PROGRESSION) || "{}"); } catch { return {}; }
+}
+
+function ecrireProgression(valeur) {
+  try { localStorage.setItem(CLE_PROGRESSION, JSON.stringify(valeur)); } catch { /* mode privé */ }
+}
+
+function noterReponse(id, juste) {
+  const progression = lireProgression();
+  const fiche = progression[id] || { boite: 1, vues: 0, justes: 0 };
+  fiche.vues += 1;
+  if (juste) fiche.justes += 1;
+  fiche.boite = juste ? Math.min(3, fiche.boite + 1) : 1;
+  progression[id] = fiche;
+  ecrireProgression(progression);
+}
+
+function blocLecons(lecons) {
+  return `<ol class="lecons">${lecons
+    .map(
+      (lecon) => `<li><a href="#/apprendre/${encodeURIComponent(lecon.slug)}">
+        <span class="lecon-num" aria-hidden="true">${lecon.ordre}</span>
+        <span class="lecon-titre">${echappe(lecon.titre)}</span>
+        <span class="badge ${lecon.statut === "relu" ? "relu" : "brouillon"}">${
+          lecon.statut === "relu" ? "relu" : "brouillon"
+        }</span>
+        <span class="lecon-resume">${echappe(lecon.resume)}</span>
+      </a></li>`,
+    )
+    .join("")}</ol>`;
+}
+
+function blocQuiz() {
+  const themes = quizThemes
+    .map(
+      (theme) => `<button class="puce" type="button" data-quiz-theme="${echappe(theme.theme)}"
+        aria-pressed="${quizTheme === theme.theme}">${echappe(theme.theme)}
+        <span class="discret">${theme.relus}/${theme.mots} relus</span></button>`,
+    )
+    .join("");
+  return `<h2>Vocabulaire</h2>
+    <p>Les exercices ne portent que sur des mots relus. Choisis un thème, puis commence :
+      quatre propositions par question, la progression reste dans ton navigateur.</p>
+    <p class="puces" role="group" aria-label="Thème de vocabulaire">
+      <button class="puce" type="button" data-quiz-theme="" aria-pressed="${quizTheme === null}">Tous</button>
+      ${themes}
+    </p>
+    <p class="puces" role="group" aria-label="Sens de la question">
+      <button class="puce" type="button" data-quiz-sens="fr_ewe" aria-pressed="${quizSens === "fr_ewe"}">français → éwé</button>
+      <button class="puce" type="button" data-quiz-sens="ewe_fr" aria-pressed="${quizSens === "ewe_fr"}">éwé → français</button>
+    </p>
+    <p><button class="bouton plein" type="button" id="lancer-quiz">Commencer l'exercice</button></p>
+    <div id="quiz-zone"></div>`;
+}
+
+async function vueApprendre() {
   document.title = `Apprendre l'éwé — ${NOM}`;
-  const lecons = [
-    ["L'alphabet éwé", "Lettres spéciales, digraphes, majuscules"],
-    ["Écrire l'éwé", "Saisir les bons caractères, distinguer d et ɖ"],
-    ["Lire l'éwé", "Syllabes, mots simples, repères de prononciation"],
-    ["Les tons", "Sensibilisation : l'éwé est une langue tonale"],
-    ["Vocabulaire par thèmes", "Salutations, nombres, famille, marché"],
-  ];
-  vue.innerHTML = `
-    <h1>Apprendre l'éwé</h1>
-    <p class="intro">Le mini-parcours arrive après la première version du dictionnaire.
-      Chaque leçon sera relue par un locuteur natif avant publication ; aucune ne sera
-      publiée à l'état de brouillon.</p>
-    <ul class="resultats">
-      ${lecons.map(([titre, resume]) => `<li><a href="#/apprendre">
-        <span class="mot">${titre}</span><span class="nature">à venir</span>
-        <span class="trad">${resume}</span></a></li>`).join("")}
-    </ul>`;
+  vue.innerHTML = `<h1>Apprendre l'éwé</h1>
+    <p class="intro">Cinq leçons courtes pour apprendre à écrire et lire l'éwé, puis des
+      exercices de vocabulaire tirés du dictionnaire.</p>
+    <div id="liste-lecons"><p class="chargement">Leçons…</p></div>
+    <section class="quiz" id="quiz-apprendre"><p class="chargement">Exercices…</p></section>`;
+  try {
+    const [lecons, themes] = await Promise.all([
+      appel("/v1/learn/lessons"),
+      appel("/v1/learn/themes"),
+    ]);
+    quizThemes = themes;
+    const liste = document.getElementById("liste-lecons");
+    if (liste) liste.innerHTML = blocLecons(lecons);
+    const bloc = document.getElementById("quiz-apprendre");
+    if (bloc) bloc.innerHTML = blocQuiz();
+  } catch (erreur) {
+    const bloc = document.getElementById("quiz-apprendre");
+    if (bloc) bloc.innerHTML = messageErreur(erreur);
+  }
+}
+
+async function vueLecon(slug) {
+  const numero = ++jeton;
+  vue.innerHTML = `<p class="chargement">Leçon…</p>`;
+  try {
+    const lecon = await appel(`/v1/learn/lessons/${encodeURIComponent(slug)}`);
+    if (numero !== jeton) return;
+    document.title = `${lecon.titre} — ${NOM}`;
+    const banniere = lecon.statut === "relu"
+      ? `<p class="badge relu">Contenu relu${lecon.relu_par ? ` par ${echappe(lecon.relu_par)}` : ""}</p>`
+      : `<p class="badge brouillon">Contenu en cours de relecture</p>`;
+    vue.innerHTML = `<article class="lecon-contenu">
+      <p class="fil"><a href="#/apprendre">Apprendre l'éwé</a></p>
+      <h1>${echappe(lecon.titre)}</h1>
+      ${banniere}
+      ${lecon.html}
+      <p class="fil"><a href="#/apprendre">← Toutes les leçons</a></p>
+    </article>`;
+  } catch (erreur) {
+    if (numero !== jeton) return;
+    vue.innerHTML = messageErreur(erreur);
+  }
+}
+
+async function lancerQuiz() {
+  const zone = document.getElementById("quiz-zone");
+  if (!zone) return;
+  zone.innerHTML = `<p class="chargement">Préparation…</p>`;
+  const parametres = new URLSearchParams({ n: "20", sens: quizSens });
+  if (quizTheme) parametres.set("theme", quizTheme);
+  try {
+    const quiz = await appel(`/v1/learn/quiz?${parametres}`);
+    if (!quiz.items.length) {
+      zone.innerHTML = `<p class="message-vide">${echappe(quiz.raison || "Aucun exercice disponible.")}</p>
+        ${quizTheme ? '<p class="discret">Essaie sans filtre : <button class="lien" type="button" data-quiz-theme="">tous les thèmes</button>.</p>' : ""}
+        <p class="discret">Les mots entrent dans les exercices après relecture. La liste des mots
+        à relire est prête ; voir <a href="#/a-propos">À propos</a>.</p>`;
+      return;
+    }
+    // Priorité aux mots de la boîte 1, puis tirage aléatoire du serveur.
+    const progression = lireProgression();
+    const choisis = quiz.items
+      .map((item) => ({ item, boite: (progression[item.id] || {}).boite || 1 }))
+      .sort((a, b) => a.boite - b.boite || Math.random() - 0.5)
+      .slice(0, 10)
+      .map((entree) => entree.item);
+    quizState = { items: choisis, index: 0, score: 0, sens: quiz.sens };
+    rendreQuestion();
+  } catch (erreur) {
+    zone.innerHTML = messageErreur(erreur);
+  }
+}
+
+function rendreQuestion() {
+  const zone = document.getElementById("quiz-zone");
+  if (!zone || !quizState) return;
+  const { items, index, score, sens } = quizState;
+  if (index >= items.length) return rendreBilan();
+  const item = items[index];
+  const progression = Math.round((index / items.length) * 100);
+  const lang = sens === "fr_ewe" ? "fr" : "ee";
+  const langChoix = sens === "fr_ewe" ? "ee" : "fr";
+  zone.innerHTML = `
+    <div class="barre" role="progressbar" aria-valuemin="0" aria-valuemax="${items.length}"
+         aria-valuenow="${index}" aria-label="Progression"><span style="width:${progression}%"></span></div>
+    <p class="discret">Question ${index + 1} sur ${items.length} · ${score} bonne${score > 1 ? "s" : ""} réponse${score > 1 ? "s" : ""}</p>
+    <p class="quiz-question" lang="${lang}">${echappe(item.question)}</p>
+    <div class="quiz-choix">${item.propositions
+      .map((proposition, i) => `<button class="bouton" type="button" data-choix="${i}"
+        lang="${langChoix}">${echappe(proposition)}</button>`)
+      .join("")}</div>
+    <p class="quiz-retour" role="status"></p>`;
+}
+
+function repondre(indice) {
+  const { items, index, sens } = quizState;
+  const item = items[index];
+  const choisi = item.propositions[indice];
+  const juste = choisi === item.reponse;
+  quizState.score += juste ? 1 : 0;
+  noterReponse(item.id, juste);
+
+  document.querySelectorAll("#quiz-zone [data-choix]").forEach((bouton, i) => {
+    bouton.disabled = true;
+    if (item.propositions[i] === item.reponse) bouton.classList.add("juste");
+    else if (i === indice) bouton.classList.add("faux");
+  });
+
+  const langueReponse = sens === "fr_ewe" ? "ee" : "fr";
+  const retour = document.querySelector("#quiz-zone .quiz-retour");
+  retour.className = `quiz-retour ${juste ? "ok" : "ko"}`;
+  retour.innerHTML = juste
+    ? '<span aria-hidden="true">✓</span> Bonne réponse'
+    : `<span aria-hidden="true">✗</span> Pas tout à fait — la bonne réponse est
+       <strong lang="${langueReponse}">${echappe(item.reponse)}</strong>`;
+
+  const suite = document.createElement("button");
+  suite.type = "button";
+  suite.className = "bouton plein";
+  suite.id = "quiz-suivant";
+  suite.textContent = index + 1 >= items.length ? "Voir le résultat" : "Question suivante";
+  retour.after(suite);
+  suite.focus();
+}
+
+function rendreBilan() {
+  const zone = document.getElementById("quiz-zone");
+  const { items, score } = quizState;
+  const sur = items.length;
+  const commentaire = score === sur ? "Sans faute." : score >= sur * 0.7 ? "Bonne série." : "À revoir tranquillement.";
+  zone.innerHTML = `
+    <p class="quiz-question">${score} / ${sur}</p>
+    <p class="discret">${commentaire} Les mots ratés reviennent en priorité au prochain exercice.</p>
+    <p class="actions-quiz">
+      <button class="bouton plein" type="button" id="quiz-recommencer">Recommencer</button>
+      <a class="bouton" href="#/apprendre">Retour aux leçons</a>
+    </p>`;
+}
+
+function gererClicQuiz(evenement) {
+  const theme = evenement.target.closest("[data-quiz-theme]");
+  if (theme) {
+    quizTheme = theme.dataset.quizTheme || null;
+    document.querySelectorAll("[data-quiz-theme]").forEach((bouton) => {
+      bouton.setAttribute("aria-pressed", String((bouton.dataset.quizTheme || null) === quizTheme));
+    });
+    return;
+  }
+  const sens = evenement.target.closest("[data-quiz-sens]");
+  if (sens) {
+    quizSens = sens.dataset.quizSens;
+    document.querySelectorAll("[data-quiz-sens]").forEach((bouton) => {
+      bouton.setAttribute("aria-pressed", String(bouton.dataset.quizSens === quizSens));
+    });
+    return;
+  }
+  if (evenement.target.closest("#lancer-quiz") || evenement.target.closest("#quiz-recommencer")) {
+    lancerQuiz();
+    return;
+  }
+  if (evenement.target.closest("#quiz-suivant")) {
+    quizState.index += 1;
+    rendreQuestion();
+    return;
+  }
+  const choix = evenement.target.closest("[data-choix]");
+  if (choix && quizState) repondre(Number(choix.dataset.choix));
 }
 
 async function vueAPropos() {
@@ -403,8 +619,9 @@ const routes = [
   { motif: /^\/?$/, vue: vueAccueil, nav: "dictionnaire" },
   { motif: /^\/recherche\/(.+)$/, vue: (m) => vueRecherche(decodeURIComponent(m[1])), nav: "dictionnaire" },
   { motif: /^\/mot\/(\d+)$/, vue: (m) => vueMot(Number(m[1])), nav: "dictionnaire" },
-  { motif: /^\/faq\/?$/, vue: vueFaq, nav: "" },
   { motif: /^\/apprendre\/?$/, vue: vueApprendre, nav: "apprendre" },
+  { motif: /^\/apprendre\/([\w-]+)$/, vue: (m) => vueLecon(m[1]), nav: "apprendre" },
+  { motif: /^\/faq\/?$/, vue: vueFaq, nav: "" },
   { motif: /^\/a-propos\/?$/, vue: vueAPropos, nav: "a-propos" },
 ];
 
@@ -659,5 +876,7 @@ document.getElementById("exemples").addEventListener("click", (evenement) => {
 });
 
 document.getElementById("signaler-general").addEventListener("click", () => ouvrirSignalement(null, null));
+
+vue.addEventListener("click", gererClicQuiz);
 
 rendre();
