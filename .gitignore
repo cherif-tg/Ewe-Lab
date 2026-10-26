@@ -8,6 +8,9 @@ dictionnaire.db
 contributions.db
 dictionnaire.db-*
 contributions.db-*
+# copie destinée au dépôt privé de données — ne doit jamais entrer dans le dépôt public
+agbale-dictionnaire.db*
+*.dump
 
 # Environnement Python
 .venv/

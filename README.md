@@ -33,7 +33,21 @@ python -m http.server 5173 --directory web  # interface → http://127.0.0.1:517
 ```
 
 L'interface interroge l'API déclarée dans `<meta name="api-base">` (`web/index.html`).
-Pour un déploiement où l'API est servie sur la même origine, laisser cette valeur vide.
+En local, laisser cette valeur vide : la page retombe sur `http://127.0.0.1:8000`.
+Pour un déploiement où l'API est servie sur la même origine, laisser aussi vide.
+
+## Déploiement
+
+Front sur **Cloudflare Pages**, API sur **Render** (offre gratuite). La base du dictionnaire n'est
+pas dans le dépôt : elle est téléchargée à la construction depuis un asset de release privé, pour
+ne jamais publier la donnée.
+
+```bash
+python scripts/base_de_donnees.py     # récupère la base si BASE_URL est défini
+```
+
+Marche à suivre complète : [`DEPLOIEMENT.md`](DEPLOIEMENT.md). Configuration Render :
+[`render.yaml`](render.yaml).
 
 ## Organisation
 

@@ -1,0 +1,30 @@
+# Déploiement de production — Agbalẽ
+#
+# Render : service web gratuit. La base du dictionnaire n'est pas dans le dépôt :
+# elle est téléchargée au build depuis un asset de release d'un dépôt privé.
+#
+# Variables à renseigner dans le tableau de bord (sync: false) :
+#   BASE_URL       URL de l'asset (https://api.github.com/repos/<compte>/<dépôt>/releases/assets/<id>)
+#   GH_TOKEN       jeton de lecture du dépôt privé
+#   CORS_ORIGINS   origine(s) du front, séparées par des virgules
+#
+# Documentation complète : DEPLOIEMENT.md
+
+services:
+  - type: web
+    name: agbale-api
+    runtime: python
+    plan: free
+    region: frankfurt
+    buildCommand: pip install -r requirements.txt && python scripts/base_de_donnees.py
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DICTIONNAIRE_DB
+        value: dictionnaire.db
+      - key: BASE_URL
+        sync: false
+      - key: GH_TOKEN
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false

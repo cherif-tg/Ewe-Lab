@@ -1,7 +1,12 @@
 /* Interface du dictionnaire français–éwé : routeur par ancre, recherche, fiche,
    signalement. Aucune dépendance, aucun build : le fichier est servi tel quel. */
 
-const base = (document.querySelector('meta[name="api-base"]')?.content || "").replace(/\/+$/, "");
+const apiDeclaree = (document.querySelector('meta[name="api-base"]')?.content || "").trim();
+// En local, on vise l'API de développement ; ailleurs, l'adresse déclarée dans la page.
+const base = (
+  apiDeclaree ||
+  (["localhost", "127.0.0.1"].includes(location.hostname) ? "http://127.0.0.1:8000" : "")
+).replace(/\/+$/, "");
 
 const vue = document.getElementById("vue");
 const champ = document.getElementById("champ");

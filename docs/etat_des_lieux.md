@@ -384,3 +384,22 @@ Un cas a été corrigé à cette occasion : choisir un thème trop petit (2 mots
 - **Remplir `data/verifications.csv`** — 32 lignes prêtes, il suffit d'un nom dans `relu_par`. Quatre mots relus ouvrent le quiz ; une vingtaine rend l'exercice intéressant.
 - L'exercice de **saisie** de la leçon 2 (recopier au clavier) n'est pas encore un exercice interactif.
 - L'**audio** reste en v2, avec consentement écrit.
+
+---
+
+## 14. Déploiement prêt à lancer (26 octobre 2026)
+
+Cible : **front sur Cloudflare Pages**, **API sur Render** (plan gratuit). La contrainte structurante n'est pas le prix mais les droits : `dictionnaire.db` est une œuvre dérivée non vérifiée, donc elle ne doit être ni versionnée ni téléchargeable. Un Space Hugging Face public ou une version statique avec SQLite en WASM auraient été plus simples, mais auraient distribué la donnée — écartés pour cette raison.
+
+| Élément | Où | Coût |
+|---|---|---|
+| Front (`web/`) | Cloudflare Pages | gratuit |
+| API (`api/main.py`) | Render, plan free | gratuit |
+| Base | asset de release, dépôt privé | gratuit |
+| Signalements | `contributions.db` éphémère | perdu au redéploiement |
+
+**Livré :** `DEPLOIEMENT.md` (marche à suivre en sept étapes), `render.yaml` (build, start, health check, variables), `scripts/base_de_donnees.py` (téléchargement de la base au build, avec jeton).
+
+Le script a été testé sur ses cinq chemins : base déjà présente (passe), `BASE_URL` absent (erreur explicite), téléchargement réel d'une base de 2 660 Ko (en-tête SQLite vérifié), fichier non SQLite refusé, 404 signalé. Côté front, `web/js/app.js` résout désormais l'adresse de l'API dans cet ordre : valeur de `<meta name="api-base">`, sinon `http://127.0.0.1:8000` en local, sinon même origine — vérifié sous jsdom dans les deux configurations.
+
+**Ce que l'offre gratuite laisse en suspens :** réveil à froid d'environ une minute après 15 min d'inactivité (un ping toutes les 14 min garde le service éveillé) et signalements volatils. Les conserver demanderait une base Postgres gratuite et une adaptation de `POST /v1/report`.
